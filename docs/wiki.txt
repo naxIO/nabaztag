@@ -14,7 +14,8 @@ At the time of this writing I am running with the following versions:
 * LAME 32bits version 3.99.5 (http://lame.sf.net)
 * Mp3Wrap Version 0.5 (2003/Jan/16)
 
-You can install them on your Raspberry Pi by running the following commands:
+You can install them on your Raspberry Pi by running the commands below.  When you install MySql, it will prompt you for a root password.  You'll need that to setup the database.
+
 
     sudo apt-get update
     sudo apt-get upgrade
@@ -27,7 +28,6 @@ You can install them on your Raspberry Pi by running the following commands:
 
     sudo apt-get install mp3wrap
 
-When you install MySql, it will prompt you for a root password.  You'll need that to setup the database below.
 
 When you install Apache, it may kick out an error that says *Could not reliably determine the server's fully qualified domain name*. You can fix this by setting the server's name to localhost:
 
@@ -37,15 +37,40 @@ Scroll to the end of the file and insert:
 
     ServerName localhost
 
-Save the file and exit. Then do:
+If you have a V1 rabbit, you'll need to set the override:
+
+    
+
+    sudo vi /etc/apache2/sites-enabled/000-default
+
+
+    
+Change the AllowOverride to All so it looks like this:
+
+    
+
+    <Directory /var/www/>            
+        Options Indexes FollowSymLinks MultiViews            
+        AllowOverride All            
+        Order allow,deny            
+        allow from all   
+    </Directory>
+    
+
+Save the file and exit. 
+
+Then do:
+
+    
 
     sudo apachectl restart
 
+
 Installing the application
 --------------------------
-Easiest way to get setup, use git to get the latest code. First create a directory on your Pi to hold the project and then do:
+Easiest way to get setup, use git to get the latest code. First create a directory on your Pi to hold the project, change to it, and then do:
 
-    git clone     
+    git clone git://git.code.sf.net/p/nabaztaglives/code NabaztagLives
 
 This will create a folder named NabaztagLives on your Pi. Open it.
 
@@ -53,17 +78,26 @@ In my case I only have one website on my Pi so I installed NabaztagLives to the 
 
     sudo cp -R www /var
 
-Next we need to change the ownership of the files we just copied.  This assumes you're logging in to your Raspberry Pi as Pi:
+An optional step is to change the ownership of the files we just copied:
 
     sudo chown -R pi:pi /var/www
-
-Next open the db folder on your Pi and build the database. The password it prompts you for is your MySql root password:
+    
+Next open the db folder on your Pi and build the database. Enter your MySql root password when prompted:
 
     sudo ./db_setup.sh
 
-Next we need to move the db info file to the right place.  This is also where the logging occurs:
+
+Next we need to move the db info file to the right place.  This is also where the logging occurs.  Go back up one folder to the root folder where you placed the code (where etc exists) and execute the following:
+
 
     sudo cp -R ./etc /var
+
+Now we need to remove the default "It Works!" index page from apache:
+
+    
+
+    sudo rm /var/www/index.html
+
 
 Almost done! Get your IP address:
 
@@ -75,7 +109,7 @@ You're finished! All you need to do now is setup your rabbit. If you need help w
 
 My rabbit doesn't work
 ----------------------
-That's what I said! Check the error log, there's a button for it on the site. Click "reset" to reset it. Make sure you have setup your rabbit to do things! Set the idle behavior to PacMan Lights so you don't have to wait to see if it works. The other common problem is permission issues which should kick out to the error log in /var/etc.
+That's what I said! Check the error log, there's a button for it on the site. Click "reset" to reset it. Make sure you have setup your rabbit to do things! Set the idle behavior to PacMan Lights so you don't have to wait to see if it works.  You can always post to the forum at <https://sourceforge.net/p/nabaztaglives/discussion/brokenrabbit/>.
 
 New to Raspberry?
 =================
@@ -90,6 +124,7 @@ Just remember that if you want to make a backup of the SD card, you will need wh
 Start the X11 UI
 ----------------
     startx
+    
 Set the locale and straighten out the keyboard
 
     sudo raspi-config
@@ -136,6 +171,20 @@ Shutdown
 --------
     sudo shutdown -h now
 
+Set automatic login
+-------------------
+    
+    sudo vi /etc/inittab
+ 
+Find the following line:
+
+    1:2345:respawn:/sbin/getty 115200 tty1
+
+And change to:
+
+    1:2345:respawn:/bin/login -f pi tty1 </dev/tty1 >/dev/tty1 2>&1
+    
 Open MySql
 ----------
     mysql rabbit -u root -p
+

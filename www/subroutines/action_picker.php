@@ -25,7 +25,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with NabaztagLives.  If not, see <http://www.gnu.org/licenses/>.
 */
-include '../etc/nabaztag_db.php';
+include '../etc/nabaztag_db.php'; 
 
 $con2 = mysqli_connect($host,$user,$pass,$db);
 
@@ -39,7 +39,7 @@ if(! isset($version)) $version = 2; //default to V2
    
 $cmd = "call sp_GetFunctions($version);";
 
-$resultAct = mysqli_query($con2,$sql);
+$resultAct = mysqli_query($con2, $cmd);
 if (!$resultAct) die('Action picker invalid query. ' . mysqli_error());
 
 mysqli_use_result($con2);

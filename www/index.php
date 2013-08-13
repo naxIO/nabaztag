@@ -75,7 +75,7 @@ include './subroutines/logError.php';
 		
 			if (!$con) logError("index.php: $msg");
 			
-			$result = mysqli_query($con,"call sp_GetCount()");
+			$result = mysqli_query($con,"call sp_GetCount();");
 		
 			if (!$result) logError("index.php: $msg");
 			
@@ -97,7 +97,7 @@ include './subroutines/logError.php';
 			ini_set('log_errors', 1);
 			ini_set('error_log','../etc/nabaztag_error.log');
 			
-			$result = mysqli_query($con,"call sp_GetLatestRabbit()");
+			$result = mysqli_query($con,"call sp_GetLatestRabbit();");
 	
 			if (!$result) logError("index.php: $msg");
 	
@@ -106,7 +106,7 @@ include './subroutines/logError.php';
 				$latest = $row[0];
 			}	
 			
-			echo $latest . '!';
+			if(isset($latest)) echo $latest . '!';
 			
 			mysqli_next_result($con);
 		?>

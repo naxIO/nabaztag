@@ -1,0 +1,65 @@
+<html>
+<link rel="stylesheet" type="text/css" href="main.css" />
+<head>
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache">
+<META HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE">
+<META HTTP-EQUIV="EXPIRES" CONTENT="0">
+<META NAME="ROBOTS" CONTENT="NOINDEX, NOFOLLOW">
+<title>API Info</title>
+</head>
+<center>
+<h2>API Info</h2>
+<table border=1 cellspacing=0 cellpadding=9>
+	<tr class="header">
+		<td>Command</td>
+		<td>Description</td>
+		<td>Rabbit</td>
+		<td>Values</td>
+		<td>Example</td>
+		<td>Notes</td>
+	</tr>
+	<tr>
+		<td>color</td>
+		<td>Set the color of all LEDs</td>
+		<td>V1</td>
+		<td>0 thru 255</td>
+		<td>http://nabaztaglives.com/api.php?sn=##:##:##:##:##:##&color=2</td>
+		<td>(1)</td>
+	</tr>
+	<tr>
+		<td>tts</td>
+		<td>Speak a TTS message</td>
+		<td>V2</td>
+		<td>255 characters</td>
+		<td>http://nabaztaglives.com/api.php?sn=##:##:##:##:##:##&tts=hello</td>
+		<td>(2)</td>
+	</tr>
+	<tr>
+		<td>play</td>
+		<td>Play an MP3</td>
+		<td>V2</td>
+		<td>240 character URL</td>
+		<td>http://nabaztaglives.com/api.php?sn=##:##:##:##:##:##&play=nabaztaglives.com/avionics.mp3</td>
+		<td>(3)</td>
+	</tr>
+	<tr>
+		<td>stream</td>
+		<td>Stream an MP3</td>
+		<td>V2</td>
+		<td>240 character URL</td>
+		<td>http://nabaztaglives.com/api.php?sn=##:##:##:##:##:##&stream=nabaztaglives.com/avionics.mp3</td>
+		<td>(3)</td>
+	</tr>
+
+</table>
+<P>
+
+</center>
+<div class="freeText">
+(1) ##:##:##:##:##:## is the serial number of your rabbit
+<br>
+(2) This service uses Google TTS
+<br>
+(3) The V2 suffers from buffering issues which makes the sound "crack" or "break up".  You can choose any http based URL you want that returns an MP3 (do not include http://).  The payload is between the URL you choose and your rabbit; it does not come back to this server for any processing.    
+</div>
+</html>

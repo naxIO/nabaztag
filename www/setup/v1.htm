@@ -1,0 +1,96 @@
+<html>
+<center>
+<h2>V1 Rabbit Setup </h2>
+</center>
+<P>
+<b>Note - do not point your rabbit to nabaztaglives.com as shown below. You should point it to the IP of your server which should be displayed on the main page.
+</b>
+<P>
+The V1 rabbit is very limited in functions it can perform.  Most of the options on the update page will not work.  More functionality will be added in the future.
+<P>
+The V1 rabbit only supports the WEP security algorithm for wireless networks.  Your network is probably using a more modern algorithm like WPA or WPA2. I will describe a way to setup a second router called Rabbit to accommodate the rabbit.
+<P>
+First let's assume you have already setup your network and you just want to know how to connect the rabbit.  Here are the steps.
+<P>
+1. While holding the button down, plug your rabbit in to get him to all blue mode
+<br>
+2. Find your rabbit in your wifi connections and connect to him
+<br>
+3. Browse to <a href="http://192.168.0.1">http://192.168.0.1</a>
+<P>
+You will see a pink screen. 
+<P>
+<img src="1.jpg"></img>
+<P>
+4. Click Scan Wifi Networks and you will get a blank screen like this:
+<P>
+<img src="2.jpg"></img>
+<P>
+
+5. Refresh this screen 50 times until you see your network.  Doing this will make sure the wireless card in your rabbit works.  Your network should eventually show up.  When it does, click join.
+<p>
+<img src="3.jpg"></img>
+<P>
+6. Click continue
+<br>
+7. Select Yes for WEP key
+<br>
+8. Type in your router's password in WEP key
+<br>
+9. Under authentication, set to open system
+<p>
+<img src="4.jpg"></img>
+<P>
+10. Replace the nabaztaglives.com in the following link with the IP of your server and open it: <a href="http://192.168.0.1/b.htm?a=nabaztaglives.com&b=80">http://192.168.0.1/b.htm?a=nabaztaglives.com&b=80</a>
+<br>
+11. Click Update and start
+<br>
+<img src="5.jpg"></img>
+<P>
+12. You can now disconnect from the rabbit and reconnect to your computer's router
+<P>
+<center>
+<h2>
+Router Setup
+</h2>
+</center>
+If you want to setup a second router for the V1 rabbit, there are several methods you can use.  I will present one method that worked for me.  Note I used an Airport network so the screens may be a little different than yours.  We will setup a hidden network that is MAC restricted to the rabbit.  We will call the new network Rabbit so it matches the setup above.
+<P>
+1. Obtain a second router
+<br>
+2. Plug the lan cord from the router's modem port to your computer's LAN port
+<br>
+3. Connect to the router setup page
+<br>
+4. Select DHCP
+<br>
+5. Set network mode to create a wireless network
+<br>
+6. Set security to WEP
+<br>
+7. Under wireless options, select 802.11b/g compatible
+<br>
+8. Set channel to 7 (this is what I used)
+<br>
+9. Check create hidden network
+<p>
+<img src="r1.jpg"></img>
+<P>
+10. On network tab, set router mode to Off (Bridge Mode)
+<br>
+11. Check enable access control
+<br>
+12. Under wireless clients set everyone to no access
+<p>
+<img src="r2.jpg"></img>
+<p>
+13. Add an entry and name it RabbitV1
+<br>
+14. Enter your rabbit's MAC address
+<br>
+15. Set access to everyday all day
+<br>
+16. Click OK and exit out of the router setup
+<br>
+17. Disconnect the router from your computer and connect one of its LAN ports to your primary router's LAN port.  
+</html>

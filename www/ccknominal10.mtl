@@ -1,0 +1,4453 @@
+// VLISP - Feb 06 - by Sylvain Huet
+// Metal
+
+proto main 0;;
+
+//var SIMU;;  //take this out for the real rabbit
+var NOMINAL;;
+
+var AUDIOLIB;;
+
+
+ifdef NOMINAL
+{
+var AUDIOLIB;;
+var EARSLIB;;
+var INFOLIB;;
+var RECLIB;;
+}
+
+ifdef SIMU
+{ 
+var HARDWARE=4;;
+var DNSLOCAL=999;;
+}
+else
+{
+var HARDWARE=4;;
+var DNSLOCAL=1597;;
+}
+
+var GREEN=0x00ff00;;
+var AMBER=0xff8000;;
+var BLACK=0x000000;;
+var VIOLET=0xff00ff;;
+var RED=0xff0000;;
+var YELLOW=0xffff00;;
+var TEAL=0x00ffff;;
+var WHITE=0xffffff;;  
+var WARMWHITE=0xe0e0e0;;
+var CYAN=0x00a0ff;;
+var BLUE=0x0000f0;;
+var MAGENTA=0xff8080;;
+var PURPLE=0xff00ff;;
+var cheer=0;;
+//cck
+
+var BOTTOMRED=0x010000;;
+var BOTTOMGREEN=0x000100;;
+var BOTTOMYELLOW=0x010100;;
+var BOTTOMBLUE=0x000001;;  //this kills the LED in the real rabbit
+var BOTTOMVIOLET=0x010001;;
+var BOTTOMTEAL=0x000101;;
+var BOTTOMWHITE=0x010101;;
+var BOTTOMORANGE=0x010101;;
+var GRAY=0x808080;;
+var PINK=0xff8080;;
+var ORANGE=0xffa500;;
+var COLORk=0xffff80;;
+var COLORl=0x8080ff;;
+var COLORm=0xff80ff;;
+var COLORn=0x80ffff;;
+var COLORo=0xff8000;;
+var BOTTOMCOLOR=0x010001;;	
+
+var wav_first;;
+var wav_url;;
+var wav_save_fifo;;
+
+//end cck
+
+proto buttoncheckevent 0;;
+
+//cck moved these here
+var chordata;;
+var chorindex;;
+var chortimescale;;
+var chornexttime;;
+var chorrandom;;
+var chortaichimotor;;
+var moreText;;
+var t0;; //text msg index
+
+type Wifi=initW | gomasterW | masterW | gostationW _ | dhcpW _| stationW | reconnectW;;
+var wifi;;
+
+var mess="SAY HELLO";;
+
+var netip="\0\0\0\0";;
+var netmask="\255\255\255\0";;
+var netgateway="\0\0\0\0";;
+var netdns="\0\0\0\0";;
+
+var mymac;;
+
+var macbroadcast="\$ff\$ff\$ff\$ff\$ff\$ff";;
+var ipbroadcast="\$ff\$ff\$ff\$ff";;
+
+var master=0;;
+
+var netip_empty="\0\0\0\0";;
+
+var netip_master="\192\168\2\1";;
+var netmask_master="\255\255\255\0";;
+var netgateway_master="\192\168\0\1";;
+
+var wifiscans;;
+
+var IEEE80211_CRYPT_NONE=0;;
+var IEEE80211_CRYPT_WEP64=1;;
+var IEEE80211_CRYPT_WEP128=2;;
+var IEEE80211_CRYPT_WPA=3;;
+var IEEE80211_CRYPT_WPA_UNSUPPORTED=4;;
+
+var IEEE80211_AUTH_OPEN=0;;
+var IEEE80211_AUTH_SHARED=1;;
+
+var FIRMWARE=0x01010a;;
+
+
+// --------------- UTIL debut
+//fun strcmp a b = vstrcmp a 0 b 0 nil;;
+fun strstr s p i=strfind s i p 0 nil;;
+fun itoanil l=if l==nil then '0'::nil else l;;
+fun listlen l=if l==nil then 0 else 1+listlen tl l;;
+fun listrem l x=if l!=nil then if x==hd l then tl l else (hd l)::listrem tl l x;;
+fun slistlen l=	if l==nil then 0 else (strlen hd l)+slistlen tl l;;
+fun listnth l i=if !i then hd l else if i>0 then listnth tl l i-1;;
+
+fun listtostr l=
+	let strnew listlen l -> s in
+	let 0->i in
+	(
+		for p=l;p!=nil;tl p do
+		(
+			strset s i hd p;
+			set i=i+1
+		);
+	s
+	);;
+
+fun atoibin2 val=itobin2 atoi val;;
+
+fun countpattern s p i=
+	let strstr s p i -> j in
+	if j==nil then 0
+	else 1+countpattern s p j+strlen p;;
+
+fun strreplace2 sn s p v i id=
+	if i<strlen s then
+	let strstr s p i -> j in
+	let if j==nil then strlen s else j -> k in
+	(
+		strcpy sn id s i k-i;
+		if j!=nil then strcpy sn id+k-i v 0 nil;
+		strreplace2 sn s p v k+strlen p id+k-i+strlen v
+	);;
+	
+fun strreplace s p v=
+	let countpattern s p 0 -> i in
+	if !i then s
+	else let strnew (strlen s) + ((strlen v)-(strlen p))*i -> sn in
+	(
+		strreplace2 sn s p v 0 0;
+		sn
+	);;
+
+
+fun rev p q=if p==nil then q else rev tl p (hd p)::q;;
+
+fun remfromlist l t= if l!=nil then if t==hd l then tl l else (hd l)::remfromlist tl l t;;
+
+fun insert x l f=
+	if l==nil then x::nil
+	else let call f [x hd l] -> r in
+	if r>0 then (hd l)::insert x tl l f
+	else if r<0 then x::l
+	else insert x tl l f;;
+
+fun sort l f= if l!=nil then insert hd l sort tl l f f;;
+
+fun select l a f= if l!=nil then let hd l-> x in if call f [x a] then x::select tl l a f else select tl l a f;;
+
+fun conc p q=if p==nil then q else (hd p)::conc tl p q;;
+
+fun _useparamip s i val j=
+	if i<4 then
+	let strstr val "." j -> k in
+	(
+		strset s i atoi strsub val j if k==nil then nil else k-j;
+		_useparamip s i+1 val if k==nil then strlen val else k+1
+	);;
+
+fun useparamip val=
+	let strnew 4 -> ip in
+	(
+		_useparamip ip 0 val 0;
+		ip
+	);;
+
+fun webip ip=
+	strcatlist (itoa strget ip 0)::"."::(itoa strget ip 1)::"."::(itoa strget ip 2)::"."::(itoa strget ip 3)::nil;;
+
+fun _webmac key i=
+	if i<strlen key then (ctoh strget key i)::if i+1<strlen key then ":"::_webmac key i+1 else _webmac key i+1;;
+
+fun webmac key=strcatlist _webmac key 0;;
+
+proto setleds 1;;
+
+// ---------------- UTIL fin
+
+fun MACecho src i0 ln=
+	for i=0;i<6 do (Secho ctoh strget src i0+i; Secho ".");	if ln then Secholn "";
+	src;;
+
+fun SEQecho src i0 ln=
+	for i=0;i<4 do (Secho ctoh strget src i0+i; Secho ".");	if ln then Secholn "";
+	src;;
+
+fun IPecho src i0 ln=
+	for i=0;i<4 do (Iecho strget src i0+i; Secho ".");if ln then Secholn "";
+	src;;
+
+fun itoh4 i = strcatlist (ctoh i>>24)::(ctoh i>>16)::(ctoh i>>8)::(ctoh i)::nil;;
+
+fun dump s=
+	for i0=0;i0<strlen s;i0+16 do
+	(
+		Secho itoh4 i0;
+		Secho " ";
+		for i=0;i<16 do let strget s i0+i -> c in
+		(
+			Secho if c==nil then "  " else ctoh c;
+			Secho " "
+		);
+		Secho " ";
+		for i=0;i<16 do let strget s i0+i -> c in
+		(
+			Secho if c==nil then "  " else if c<32 then "." else ctoa c
+		);
+		Secholn ""
+	);
+
+	s;;
+
+fun dumpscan l0=
+	Secholn "## DUMPSCAN >>>>";
+	for l=l0;l!=nil;tl l do
+	let hd l->[ssid mac bssid rssi channel rateset encryption] in
+	(
+		Secho "## SCAN "; Secholn ssid;
+		Secho "mac:"; MACecho mac 0 1;
+		Secho "bssid:"; MACecho bssid 0 1;
+		Secho "rssi:"; Iecholn rssi;
+		Secho "channel:"; Iecholn channel;
+		Secho "rateset:"; Iecholn rateset;
+		Secho "encryption:"; Iecholn encryption
+	);
+	l0;;
+
+// ------------- Config debut
+var CONF_SERVERURL=0;;		//41
+var CONF_NETDHCP=41;;		//1
+var CONF_NETIP=42;;			//4
+var CONF_NETMASK=46;;		//4
+var CONF_NETGATEWAY=50;;	//4
+var CONF_NETDNS=54;;		//4
+var CONF_WIFISSID=58;;		//32
+var CONF_WIFIAUTH=90;;		//1
+var CONF_WIFICRYPT=91;;		//1
+var CONF_WIFIKEY0=92;;		//64
+var CONF_PROXYENABLE=156;;	//1
+var CONF_PROXYIP=157;;		//4
+var CONF_PROXYPORT=161;;	//2
+var CONF_LOGIN=163;;		//6
+var CONF_PWD=169;;			//6
+var CONF_WIFIPMK=175;;		//32
+var CONF_MAGIC=207;;		//1
+var CONF_LENGTH=208;;
+
+var conf;;
+
+/*
+var conf0=
+"r.nabaztag.com/vl\0-----------------------\
+\1\0\0\0\0\255\255\255\0\0\0\0\0\0\0\0\0\
+f\0-------------------------------\
+\0\0abcde\0----------------------------------------------------------\
+\0\0\0\0\0\0\0\
+\0\0\0\0\0\0\
+\0\0\0\0\0\0\
+--------------------------------\
+\$48";;
+*/
+
+fun confSave=
+	Secholn "## save configuration";
+	dump conf;
+	save conf 0 "conf.bin" 0 CONF_LENGTH;;
+
+fun confInit=
+	set conf=strnew CONF_LENGTH;
+	load conf 0 "conf.bin" 0 CONF_LENGTH;
+/*	if (strget conf CONF_MAGIC)!=0x48 then
+	(
+		set conf=strnew CONF_LENGTH;
+		strcpy conf 0 conf0 0 nil;
+		confSave;
+		set conf=strnew CONF_LENGTH;
+		load conf 0 "conf.bin" 0 CONF_LENGTH
+	);
+*/	dump conf;;
+
+fun confGet i len= strsub conf i len;;
+
+fun confGetbin i len= strsub conf i len;;
+
+fun confGetstr i len=
+	let strstr conf "\0" i -> j in
+	strsub conf i (if j==nil then len else min len j-i);;
+
+fun confSet i val len=
+	strcpy conf i val 0 len;;
+
+fun confSetbin i val len=strcpy conf i val 0 len;;
+
+fun confSetstr i val len=
+	let min strlen val len-1 -> len in
+	(
+		strcpy conf i val 0 len;
+		strset conf i+len 0
+	);;
+
+fun webport s= ((strget s 0)<<8)+strget s 1;;
+
+fun confGetWifissid=confGetstr CONF_WIFISSID 32;;
+fun confGetWificrypt=strget confGet CONF_WIFICRYPT 1 0;;
+fun confGetWifikey0=confGetstr CONF_WIFIKEY0 64;;
+fun confGetWifiauth=strget confGet CONF_WIFIAUTH 1 0;;
+fun confGetWifipmk=confGetbin CONF_WIFIPMK 32;;
+
+fun confGetDhcp=strget confGet CONF_NETDHCP 1 0;;
+fun confGetNetip=confGet CONF_NETIP 4;;
+fun confGetNetmask=confGet CONF_NETMASK 4;;
+fun confGetNetgateway=confGet CONF_NETGATEWAY 4;;
+fun confGetNetdns=confGet CONF_NETDNS 4;;
+
+fun confGetServerUrl=confGetstr CONF_SERVERURL 40;;
+fun confGetLogin=confGet CONF_LOGIN 6;;
+fun confGetPwd=confGet CONF_PWD 6;;
+
+fun confGetProxy=strget confGet CONF_PROXYENABLE 1 0;;
+fun confGetProxyip=confGet CONF_PROXYIP 4;;
+fun confGetProxyport=webport confGet CONF_PROXYPORT 2;;
+
+// ------------- Config fin
+
+ifndef SIMU
+{
+
+
+// ------------- IP debut
+fun strputchk s i w=
+	strset s i ~(w>>8);
+	strset s i+1 ~w;
+	0;;
+
+// ------------- IP fin
+
+// ------------- ARP debut
+var ARPREQ=1;;
+var ARPANS=2;;
+
+var larp;;
+var larpreq;;
+
+
+fun mkarp op ipsrc macdst ipdst=
+	strcatlist
+	"\$aa\$aa\$03\$00\$00\$00\$08\$06\$00\$01\$08\$00\$06\$04\$00"::(ctoa op)::
+	mymac::
+	netip::
+	macdst::
+	ipdst
+	::nil;;
+
+fun sendarp ip=
+	netSend (mkarp ARPREQ netip macbroadcast ip) 0 nil macbroadcast 0 1;;
+
+
+fun filterarpip l src =
+	if l!=nil then let hd l->[ip _ _] in if !vstrcmp src 8+14 ip 0 4  then filterarpip tl l src
+	else (hd l)::filterarpip tl l src;;
+
+fun checkarp l src=
+	if l!=nil then let hd l->[ip _ cb] in 
+	(
+		if !vstrcmp src 8+14 ip 0 4 then
+		let strsub src 8+8 6 -> mac in
+		(
+			Secho "found MAC target : "; MACecho mac 0 1;
+			set larp=[ip mac]::larp;
+			call cb [mac]
+		);
+		checkarp tl l src
+	);;
+
+fun cbnetarp src mac=
+	Secho "<a";
+	let strget src 8+7-> op in
+	if op==1 then // req
+	(
+//		Secho "ask ";MACecho src 16+10 1; IPecho src 16+16 1;
+		if !vstrcmp src 32 netip 0 4 then
+			netSend (mkarp ARPANS netip strsub src 16 6 strsub src 22 4) 0 nil mac 0 1;
+		nil
+	)
+	else if op==2 then
+		let larpreq->l in
+		(
+			set larpreq=filterarpip larpreq src;
+			checkarp l src
+		);;
+
+fun subnet_ ip i=
+	if i<0 then 1
+	else if ((strget ip i)^(strget netip i))&(strget netmask i) then 0
+	else subnet_ ip i-1;;
+
+fun subnet ip=
+	Secho "test subnet "; IPecho ip 0 1;
+	Iecholn subnet_ ip 3;;
+	
+	
+fun arpreq ip cb=
+	let IPecho (if subnet ip then ip else netgateway) 0 1 -> ip in
+	let listswitchstr larp ip -> mac in
+	if mac!=nil then call cb [mac]
+	else
+	(
+		sendarp ip;
+		set larpreq=[ip time cb]::larpreq;	// ### attention à la taille de la liste
+		0
+	);;
+
+fun filterarp l dt =
+	if l!=nil then let hd l->[ip t _] in if (time-t)>dt then filterarp tl l dt
+	else
+	(
+		sendarp ip;
+		(hd l)::filterarp tl l dt
+	);;
+
+fun arptime =
+	set larpreq=filterarp larpreq 10;;
+
+fun resetarp=
+	set larp=nil;
+	set larpreq=nil;
+	0;;
+
+// ------------- ARP fin
+
+
+// ------------- UDP debut
+fun mkudp ipsrc ipdst portsrc portdst content=
+	let strcatlist 
+	"\$aa\$aa\$03\$00\$00\$00\$08\$00\$45\$00\$00\$00\$00\$00\$00\$00\100\17\0\0"::
+	ipsrc::
+	ipdst::
+	"\0\0\0\0\0\0\0\0"::
+	content::
+	nil -> udp in
+	(
+		strputword udp 8+2 28+strlen content;
+		strputword udp 8+20 portsrc;
+		strputword udp 8+22 portdst;
+		strputword udp 8+24 8+strlen content;
+		strputchk udp 8+10 netChk udp 8 20 0;
+		strputchk udp 8+26 netChk udp 8+20 (8+strlen content) netChk udp 8+24 2 netChk "\0\17" 0 nil netChk udp 8+12 8 0;
+		udp
+	);;
+
+fun udpSend2 mac udp=
+	Secho ">u";
+//	dump udp;
+	netSend udp 0 nil (MACecho mac 0 1) 0 1;;
+
+fun udpsend local localp dst dstp content mac=
+	let mkudp local dst localp dstp content -> udp in
+	if mac!=nil then udpSend2 mac udp
+	else let dst -> ip in	//	ajouter le test de passerelle
+	arpreq ip fixarg2 #udpSend2 udp;;
+
+var ludp;;
+
+fun remudp l port=
+	if l!=nil then let hd l ->[p _] in if p==port then remudp tl l port else (hd l)::remudp tl l port;;
+
+fun regudp port cb=
+	set ludp=[port cb]::remudp ludp port;;
+
+fun unregudp port=
+	set ludp=remudp ludp port;;
+
+fun resetudp= set ludp=nil;;
+
+fun cbnetudp src mac=
+	Secho "<u";
+	let Iecholn strgetword src 8+20+2 -> locp in
+	let listswitch ludp locp -> cb in
+	call cb [strsub src 8+20+8 nil mac strsub src 20 4];;
+
+
+// -------------- UDP fin
+
+// ------------- TCP debut
+var TFIN=0x01;;
+var TSYN=0x02;;
+var TRST=0x04;;
+var TPUSH=0x08;;
+var TACK=0x10;;
+var TURGE=0x20;;
+
+var STOFF=-1;;
+var STSYN=0;;
+var STEST=1;;
+var STLISTEN=2;;
+var STFIN=3;;
+
+var CLIENT_SEQ_START="\0\0\1\0";;
+var CLIENT_SEQ_NULL="\0\0\0\0";;
+
+var TCPWRITE=0;;
+var TCPREAD=1;;
+var TCPCLOSE=-1;;
+var TCPSTART=2;;
+
+var TCPMAX=1024;; //1024;;  
+
+type Tcp=[stateT locT dstT locpT dstpT seqT ackT cbT macT lastsentT retryT locksendT enableT];;
+
+fun mktcp_ ipsrc ipdst portsrc portdst seq ack flag content=
+	let strcatlist 
+	"\$aa\$aa\$03\$00\$00\$00\$08\$00\$45\$00\$00\$00\$00\$00\$00\$00\100\6\0\0"::
+	ipsrc::
+	ipdst::
+	"\0\0\0\0"::
+	seq::
+	ack::
+	"\0\0\$ff\$ff\0\0\0\0"::
+	if flag&TSYN then "\2\4\5\$b4"::content::nil	// 5.b4 final : taille MSS
+	else content::nil
+	-> tcp in
+	let strlen tcp ->len in
+	(
+		strputword tcp 8+2 len-8;
+		strputword tcp 8+20 portsrc;
+		strputword tcp 8+22 portdst;
+
+		strset tcp 8+32 4*if flag&TSYN then 24 else 20;
+		strset tcp 8+33 flag;
+
+		strputchk tcp 8+10 netChk tcp 8 20 0;
+
+		let strnew 2 -> s in
+		(
+			strputword s 0 len-28;
+			strputchk tcp 8+36
+			 netChk tcp 8+20 (len-28) netChk s 0 2 netChk "\0\6" 0 nil netChk tcp 8+12 8 0
+		);
+		tcp
+	);;
+
+fun mktcp t flag content=
+//	Secholn "mktcp "; Secho "seq "; SEQecho t.seqT 0 1; Secho "ack "; SEQecho t.ackT 0 1;
+	mktcp_ t.locT t.dstT t.locpT t.dstpT t.seqT t.ackT flag content;;
+
+fun resendtcp t=
+	netSend t.lastsentT 0 nil (MACecho t.macT 0 1) 0 1;
+	0;;
+
+fun headerlen src=((strget src 8+32)>>4)<<2;;
+
+fun datalength src=(strgetword src 10)-20-headerlen src;;
+
+fun sendtcp t trame=
+//	Secholn "tcpSend"; dump trame; 
+	netSend trame 0 nil (/*MACecho*/ t.macT /*0 1*/) 0 1;
+	let strget trame 8+33 -> flag in
+	set t.seqT=netSeqAdd t.seqT (datalength trame)+(if flag&(TSYN|TFIN) then 1 else 0);
+	0;;
+
+fun sendtcpforretry t trame=
+	set t.lastsentT=trame;
+	set t.retryT=nil;
+	sendtcp t trame;;
+
+
+fun tcpSend2 mac tcp trame=
+	set tcp.macT=mac;
+	sendtcpforretry/*sendtcp*/ tcp trame;;
+
+var ltcp;;
+
+
+fun remtcp t=set t.stateT=STOFF; set ltcp=remfromlist ltcp t;;
+
+var counttcp;;
+
+fun opentcp local localp dst dstp cb=
+	let if localp==nil then 1024+set counttcp=((if counttcp==nil then time_ms else counttcp)+1)&16383 else localp -> localp in
+	let [stateT:STSYN locT:local dstT:dst locpT:localp dstpT:dstp seqT:CLIENT_SEQ_START ackT:CLIENT_SEQ_NULL cbT:cb enableT:1] -> tcp in
+	let mktcp tcp TSYN nil -> trame in
+	let dst -> ip in	//	ajouter le test de passerelle
+	(
+		set ltcp=tcp::ltcp;
+		arpreq ip fixarg2 fixarg3 #tcpSend2 trame tcp;
+		tcp
+	);;
+
+fun listentcp localp cb=
+	let [stateT:STLISTEN locpT:localp cbT:cb enableT:1] -> tcp in
+	(
+		set ltcp=tcp::ltcp
+	);;
+	
+fun findtcp l localp dstp src=
+	if l!=nil then let hd l-> t in
+	if t.locpT==localp && t.dstpT==dstp && (!vstrcmp src 8+16 t.locT 0 4)&& (!vstrcmp src 8+12 t.dstT 0 4)
+	then t
+	else if t.stateT==STLISTEN && t.locpT==localp then t
+	else findtcp tl l localp dstp src;;
+
+fun sendclose t=
+	Secholn "## sendclose";
+	sendtcp t mktcp t TFIN+TACK nil;
+	set t.stateT=STFIN;
+	0;; 
+
+fun cbnettcp src mac=
+	Secho "t";
+	let /*Iecholn*/ strgetword src 8+20+2 -> locp in
+	let /*Iecholn*/ strgetword src 8+20+0 -> dstp in
+	let findtcp ltcp locp dstp src -> t in
+	if t!=nil && t.enableT then let t.stateT -> st in
+		let /*Iecholn*/ strget src 8+33 -> flag in
+		let /*SEQecho*/ (strsub src 8+24 4) /*0 1*/-> rseq in
+		let /*SEQecho*/ (strsub src 8+28 4) /*0 1*/-> rack in
+		if st==STSYN then
+		(
+			Secholn "stsyn";
+			if (flag==TSYN+TACK) && !vstrcmp (SEQecho(t.seqT)0 1) 0 rack 0 4 then
+			(
+				set t.ackT=SEQecho (netSeqAdd rseq 1) 0 1;
+				sendtcp t mktcp t TACK nil;
+				set t.stateT=STEST;
+				set t.lastsentT=nil;
+//				Secholn "call TCPWRITE";
+				call t.cbT [t TCPWRITE nil]
+			)
+			else
+			(
+//				Secholn "TSRT+TACK";
+				sendtcp t mktcp t TRST+TACK nil;
+				remtcp t;
+				nil
+			)
+		)
+		else if st==STEST then
+			if !vstrcmp t.ackT 0 rseq 0 4 then
+			let strgetword src 10 -> iplen in
+			let ((strget src 8+32)>>4)<<2 -> tcplen in
+			let datalength src -> datalen in
+			(
+				if datalen then
+				(
+	//				dump src;
+	//				Iecholn iplen;
+	//				Iecholn tcplen;
+//					Secho "update ackT : add ";
+					set t.ackT=netSeqAdd t.ackT datalen
+				);
+				if flag&TFIN then
+				(
+					set t.ackT=netSeqAdd t.ackT 1;
+					nil
+				)
+				else if !vstrcmp t.seqT 0 rack 0 4 then
+				(
+//					Secholn "acquittement de l'envoi";
+					set t.lastsentT=nil;	// acquittement de l'envoi
+					if t.locksendT==1 then
+					(
+						set t.locksendT=0;
+						call t.cbT [t TCPWRITE nil]
+					)
+					else if t.locksendT==2 then
+					(
+						sendclose t;
+						nil
+					)
+				)
+				else (Secholn "##bad ack"; SEQecho t.seqT 0 1;SEQecho rack 0 1; nil);
+				if datalen then
+					let 8+20+headerlen src -> start in
+					let strsub src start datalen -> data in
+					call t.cbT [t TCPREAD data];
+				if datalen || flag&TFIN then sendtcp t mktcp t TACK nil;
+				if flag&TFIN then
+				(
+					sendtcp t mktcp t TFIN+TACK nil;
+					remtcp t;
+					call t.cbT [t TCPCLOSE nil]
+				)
+			)
+			else (/*SEQecho(t.ackT)0 1; SEQecho rseq 0 1;*/Secho "##bs/";sendtcp t mktcp t TACK nil; nil)
+		else if st==STFIN then
+			(
+				Secholn "STFIN";
+				set t.ackT=SEQecho (netSeqAdd rseq 1) 0 1;
+				sendtcp t mktcp t TACK nil;
+				remtcp t;
+				nil
+			)
+		else if st==STLISTEN then
+			if flag&TSYN then
+			(
+				let [stateT:STEST locT:(strsub src 8+16 4) dstT:(strsub src 8+12 4) locpT:locp dstpT:dstp
+				seqT:CLIENT_SEQ_START ackT:(netSeqAdd rseq 1) cbT:t.cbT macT:mac  enableT:1] -> tcp in
+				(
+					set ltcp=tcp::ltcp;
+					sendtcpforretry tcp mktcp tcp TACK+TSYN nil;
+					call tcp.cbT [tcp TCPSTART nil]
+				)
+			)
+	;;
+
+
+fun writetcp t msg i=
+	if t.stateT!=STEST then nil
+	else if t.lastsentT!=nil then
+	(
+//		Secholn "locksend";
+		set t.locksendT=1;
+		i
+	)
+	else let strsub msg i TCPMAX -> content in
+	let mktcp t TACK content -> trame in
+	(
+		sendtcpforretry t trame;
+		let i+strlen content -> ni in
+		(
+			if ni!=strlen msg then set t.locksendT=1;
+			ni
+		)
+	);;
+
+
+fun closetcp t=
+	if t.stateT!=STEST then 0
+	else if t.lastsentT!=nil then
+	(
+		set t.locksendT=2;
+		0
+	)
+	else sendclose t;
+	0;;
+
+fun tcpcb t cb= set t.cbT=cb;;
+
+fun enabletcp t v= set t.enableT=v;;
+
+fun tcptime =
+	for l=ltcp;l!=nil;tl l do let hd l-> t in
+	if t.lastsentT!=nil then
+	(
+		if t.retryT!=nil then
+		(
+			set t.retryT=1+t.retryT;
+			if t.retryT>10 then
+			(
+				remtcp t;
+				call t.cbT [t TCPCLOSE nil];
+				nil
+			)
+			else resendtcp t
+		)
+		else set t.retryT=0
+	);
+	0;;
+
+fun resettcp=
+	set ltcp=nil;
+	0;;
+
+// -------------- TDP fin
+
+// --------------- DHCP debut
+
+var DHCP_DISCOVER=1;;
+var DHCP_OFFER=2;;
+var DHCP_REQUEST=3;;
+var DHCP_DECLINE=4;;
+var DHCP_ACK=5;;
+
+fun mkdhcp op netip hostip newip =
+	let 236+16+14->n in
+	let strnew n -> b in
+	(
+		for i=0;i<n do strset b  i 0;
+		strcpy b 0 "\1\1\6" 0 3;
+		strcpy b 12 netip 0 4;
+		strcpy b 12+16 mymac 0 6;
+		strcpy b 236 "\99\130\83\99\53\1" 0 6;
+		strset b 236+6 op;
+		strcpy b 236+7 "\61\7\1" 0 3;
+		strcpy b 236+10 mymac 0 6;
+		strcpy b 236+16 "\12\7Pabcdef\55\3\1\3\6" 0 14;
+		if op==DHCP_REQUEST then strcatlist b::"\54\4"::hostip::"\50\4"::newip::"\255"::nil
+		else strcat b "\255"
+	);;
+
+fun mkdhcpans op tid newip dmac=
+	let 236+7->n in
+	let strnew n -> b in
+	(
+		for i=0;i<n do strset b  i 0;
+		strcpy b 0 "\2\1\6" 0 3;
+		strcpy b 4 tid 0 4;
+		strcpy b 16 newip 0 4;
+		strcpy b 12+16 dmac 0 6;
+		strcpy b 236 "\99\130\83\99\53\1" 0 6;
+		strset b 236+6 op;
+		strcatlist b::"\54\4"::newip::"\51\4\0\1\$51\$80\1\4"::netmask::"\3\4"::netip::"\6\4"::netip::"\15\4home\255"::nil
+	);;
+
+fun extractdhcp src i type lease submask dns gateway mac=
+	if i<strlen src then
+	let strget src i -> c in
+	if c==255 then [type lease submask dns gateway mac]
+	else let strget src i+1 -> len in
+	let i+2->i in
+	if c==53 then extractdhcp src i+len (strget src i) lease submask dns gateway mac
+	else if c==51 then extractdhcp src i+len type (strgetword src i) submask dns gateway mac
+	else if c==1 then extractdhcp src i+len type lease (strsub src i 4) dns gateway mac
+	else if c==6 then extractdhcp src i+len type lease submask (strsub src i 4) gateway mac
+	else if c==3 then extractdhcp src i+len type lease submask dns (strsub src i 4) mac
+	else if c==61 then extractdhcp src i+len type lease submask dns gateway (strsub src i+1 6)
+	else extractdhcp src i+len type lease submask dns gateway mac;;
+
+fun mkdhcpip mac=
+	let strnew 4 -> s in
+	(
+		strcpy s 0 netip 0 4;
+		strset s 3 ((strget mac 5)&0x7f)+100;
+		s
+	);;
+
+fun cbnetdhcp src macfrom hostip=
+	Secholn "<dhcp"; MACecho macfrom 0 1;
+	let strget src 0 -> x in
+	let MACecho (strsub src 28 6)0 1 -> mac in
+	if x==2 && !strcmp mac mymac then
+	(
+		let IPecho (strsub src 16 4) 0 1-> newip in
+		let extractdhcp src 240 0 nil nil nil nil nil->[type lease submask dns gateway _] in
+		if type==DHCP_OFFER then
+		(
+			Secholn ">>>>>>>>>>>>>>>OFFER";
+			udpsend netip 68 ipbroadcast 67 (mkdhcp DHCP_REQUEST netip hostip newip) macbroadcast;
+			nil
+		)
+		else if type==DHCP_ACK then
+		(
+			Secholn ">>>>>>>>>>>>>>>ACK";
+			Secho "server    ";IPecho hostip 0 1;
+			Secho "ip        ";IPecho set netip=newip 0 1;
+			Secho "type      ";Iecholn type;
+			Secho "leasetime ";Iecholn lease;
+			Secho "submask   ";IPecho set netmask=submask 0 1;
+			Secho "dns       ";IPecho set netdns=dns 0 1;
+			Secho "gateway   ";IPecho set netgateway=gateway 0 1;
+			nil
+		)
+	);;
+
+fun cbnetdhcp67 src macfrom hostip=
+	Secholn "<dhcp"; MACecho macfrom 0 1;
+	let strget src 0 -> x in
+	let MACecho (strsub src 28 6)0 1 -> mac in
+	if x==1 /*&& !strcmp mac mymac*/ then
+	(
+		let extractdhcp src 240 0 nil nil nil nil nil ->[type _ _ _ _ dmac] in
+		let strsub src 4 4 -> tid in
+		let mkdhcpip macfrom -> newip in
+		if type==DHCP_DISCOVER then
+		(
+			Secholn ">>>>>>>>>>>>>>>DISCOVER";
+//			dump src;
+			udpsend netip 67 ipbroadcast 68 (mkdhcpans DHCP_OFFER tid newip dmac) macbroadcast;
+			nil
+		)
+		else if type==DHCP_REQUEST then
+		(
+			Secholn ">>>>>>>>>>>>>>>REQUEST";
+//			dump src;
+			udpsend netip 67 ipbroadcast 68 (mkdhcpans DHCP_ACK tid newip dmac) macbroadcast;
+			nil
+		)
+
+	);;
+
+fun startdhcp=
+	udpsend netip 68 ipbroadcast 67 (mkdhcp DHCP_DISCOVER "\0\0\0\0" nil nil) macbroadcast;
+	regudp 68 #cbnetdhcp;
+	0;;
+
+fun startdhcpserver=
+	regudp 67 #cbnetdhcp67;
+	0;;
+
+// --------------- DHCP fin
+
+
+// --------------- net HOOK debut
+
+fun net src mac=
+  Secho ">>>> net ";
+	Secho "n ";//MACecho mac 0 1;
+	Secholn " dump src";
+	dump src;
+	let strget src 7 -> p in
+	(
+		if p==6 then cbnetarp src mac // ARP
+		else if p==0 then
+			let strget src 17 -> ip in
+			if ip==6 then cbnettcp src mac
+			else if ip==17 then cbnetudp src mac;
+		0
+	);
+	buttoncheckevent;
+	0;;
+
+fun netstart=
+	netCb #net;
+	resetarp;
+	resettcp;
+	resetudp;
+	0;;
+
+fun nettime=
+	arptime;
+	tcptime;
+	0;;
+
+// --------------- net HOOK fin
+
+}
+else
+{
+
+// --------------- TCP/UDP EMULATION debut
+
+var TCPWRITE=0;;
+var TCPREAD=1;;
+var TCPCLOSE=-1;;
+var TCPSTART=2;;
+
+fun udpsend local localp dst dstp content mac=
+	udpSend localp dst dstp content 0 nil;;
+
+var ludp;;
+
+fun regudp port cb=
+	set ludp=[udpStart port cb]::ludp;;
+
+fun resetudp=set ludp=nil;;
+
+
+fun netudp t src ip=
+	let listswitch ludp t -> cb in
+	call cb [src nil ip];;
+
+var ltcp;;
+
+fun writetcp t msg i=
+	tcpSend t msg i nil;;
+
+fun remtcp l t= if l!=nil then let hd l->[tt _] in if t==tt then tl l
+	else (hd l)::remtcp tl l t;;
+
+fun updatetcp l t cb= if l!=nil then let hd l->[tt _] in if t==tt then [t cb]::tl l
+	else (hd l)::updatetcp tl l t cb;;
+
+fun closetcp t=
+	set ltcp=remtcp ltcp t;
+	tcpClose t;;
+
+fun tcpcb t cb=
+	set ltcp=updatetcp ltcp t cb;
+	cb;;
+
+fun listentcp port cb=
+	set ltcp=[tcpListen port cb]::ltcp;;
+
+
+fun opentcp local localp dst dstp cb=
+//	Secholn "opentcp";IPecho dst 0 0; Secho ":"; Iecholn dstp;
+
+	let tcpOpen dst dstp -> t in
+	if t!=nil then
+	(
+		set ltcp=[t cb]::ltcp;
+		t
+	);;
+
+fun enabletcp t v=
+	tcpEnable t v;;
+
+fun nettcp t val msg=
+	if val==TCPSTART then
+		let listswitch ltcp atoi msg -> cb in
+		(
+			if cb==nil then Secholn "callback is nil"
+			else Secholn "callback is not nil";
+			set ltcp=[t cb]::ltcp;
+			call cb [t val msg]
+		)
+	else let listswitch ltcp t -> cb in
+		call cb [t val msg];;
+
+fun startdhcp=0;;
+fun startdhcpserver=0;;
+
+fun nettime=0;;
+
+fun netstart=
+	tcpCb #nettcp;
+	udpCb #netudp;
+	set ltcp=nil;
+	set ludp=nil;
+//	set wifi=stationW;
+	set netdns=confGetNetdns;
+	set netdns="\192\168\1\1";
+//	set netdns="\10\0\1\1";
+	set netip="\127\0\0\1";
+	0;;
+// --------------- TCP/UDP EMULATION fin
+}
+
+// --------------- DNS debut
+fun parsequ s i= let strfind s i "\0" 0 nil -> j in	j+5;;
+
+fun parsequs s i n=	if n<=0 then i else parsequs s parsequ s i n-1;;
+
+fun skipname s i=
+	let strgetword s i -> x in
+	if (x&0xc000)==0xc000 then i+2
+	else (strfind s i "\0" 0 nil)+1;;
+
+fun parseans s i n=
+	if n<=0 then nil
+	else let skipname s i -> j in
+	let strgetword s j -> typ in
+	if typ==1 then
+		strcatlist (itoa strget s j+10)::"."::(itoa strget s j+11)::"."::
+		(itoa strget s j+12)::"."::(itoa strget s j+13)::nil
+	else parseans s (j+10+strgetword s j+8) n-1;;
+	
+fun parsemsg s=
+  Secho ">>> parsemsg s= ";Secholn s;
+	let strgetword s 0 -> id in
+	let strgetword s 2 -> code in
+	let strgetword s 4 -> nbqu in
+	let strgetword s 6 -> nbans in
+	if nbans==0 then nil
+	else let parsequs s 12 nbqu -> i in
+	parseans s i nbans;;
+
+fun filterdns src=
+	let strfind src 0 "." 0 nil ->i in
+	if i!=nil then
+		strcat
+			strcat ctoa i strsub src 0 i
+			filterdns strsub src i+1 nil
+	else strcat ctoa strlen src src;;
+
+fun question id dns=
+	strcatlist (itobin2 id)::"\$01\$00\$00\$01\$00\$00\$00\$00\$00\$00"::(filterdns dns)::"\$00\$00\$01\$00\$01"::nil;;
+
+var dnsid=0;;
+
+type Dns=[idD domainD reqD timeoutD cbD];;
+var ldnsreq;;
+var ldns;;
+
+fun dnsreq domain cb=
+	set dnsid=if dnsid==nil then time_ms else dnsid+1;
+	let listswitchstr ldns domain -> ip in
+	if ip!=nil then call cb[ip]
+	else let dump question dnsid domain -> tramedns in
+	(
+		udpsend netip DNSLOCAL netdns 53 tramedns nil;
+		set ldnsreq=[idD:dnsid domainD:domain reqD:tramedns timeoutD:time+5 cbD:cb]::ldnsreq;
+		nil
+	);
+	0;;
+
+fun selectbyid d v= d.idD==v;;
+
+fun cbnetdns msg mac ipfrom= 
+  Secho ">>>> cbnetdns msg = ";Secholn msg;
+	let strgetword msg 0 -> id in
+	let parsemsg msg -> ip in
+	let hd select ldnsreq id #selectbyid -> x in
+	if x!=nil then
+	(
+		set ldnsreq=listrem ldnsreq x;
+		if ip!=nil then set ldns=[x.domainD ip]::ldns;	// ### attention à la taille de la liste
+		call x.cbD [ip]
+	);
+	0;;
+
+fun filterdnsdead l=if l!=nil then let hd l-> d in if d.timeoutD==nil then filterdnsdead tl l else (hd l)::filterdnsdead tl l;;
+
+fun dnstime=
+	for l=ldnsreq;l!=nil;tl l do let hd l-> d in
+	if time-d.timeoutD>=0 then
+	(
+		set d.timeoutD=nil;
+		call d.cbD [nil]
+	);
+	set ldnsreq=filterdnsdead ldnsreq;
+	0;;
+
+
+fun startdnsclient=
+  Secholn ">>>> startdnsclient";
+	regudp DNSLOCAL #cbnetdns;
+	set ldnsreq=nil;
+	set ldns=nil;
+	0;;
+
+// --------------- DNS fin
+
+
+//-------------------
+var HTTP_NORMAL=0;;
+var HTTP_STREAM=1;;
+var HTTP_DIRECT=2;;
+
+var HTTP_SOLVE=0;;
+var HTTP_REACH=1;;
+var HTTP_CONNECTED=2;;
+
+var lasthttpevent;;
+
+// type Httpreq contenant l'état d'une requête
+type Httpreq=[cnxH inputH outputH indexH cbH typeH stateH aliveH];;
+
+// callback de lecture sur la socket d'une requête
+fun tcpread cnx input httpreq=
+	if input==nil ||0==strlen input then	// erreur ou fin
+	(	closetcp cnx;	// on ferme la socket
+		if httpreq.typeH==HTTP_NORMAL then call httpreq.cbH [httpreq strcatlist rev httpreq.inputH nil]	// on retourne ce qui a été reçu
+		else call httpreq.cbH [httpreq nil]
+	)
+	else
+	(
+//		dump input;
+		set lasthttpevent=time;
+		set httpreq.aliveH=time_ms;
+		if httpreq.typeH==HTTP_NORMAL then set httpreq.inputH=input::httpreq.inputH	// on bufferise ce qui a été reçu
+		else if httpreq.typeH==HTTP_DIRECT then
+		(
+			call httpreq.cbH [httpreq input];
+			nil
+		)
+		else let strcat hd httpreq.inputH input -> s in
+		let strstr s "\13\10\13\10" 0 -> i in
+		if i==nil then
+		(
+			set httpreq.inputH=s::nil
+		)
+		else
+		(
+			set httpreq.inputH=nil;
+			set httpreq.typeH=HTTP_DIRECT;
+			call httpreq.cbH [httpreq strsub s 0 i];
+			if i+4<strlen s then call httpreq.cbH [httpreq strsub s i+4 nil];
+			nil
+		);
+		nil
+	);;
+
+// callback d'écriture sur la socket d'une requête
+fun tcpwrite cnx httpreq=
+	set httpreq.stateH=HTTP_CONNECTED; 
+	set httpreq.aliveH=time_ms;	
+	if httpreq.outputH!=nil then	// s'il y a des choses à envoyer (notamment la première fois)
+	(
+		set httpreq.indexH=writetcp cnx httpreq.outputH httpreq.indexH;	// envoyer ce qui peut l'être
+		if httpreq.indexH==nil then	// si erreur lors de l'envoi
+		(	closetcp cnx;	// on ferme la socket
+			call httpreq.cbH [httpreq nil]	)	// on retourne nil
+		else if httpreq.indexH>=strlen httpreq.outputH then	// sinon si tout a été envoyé
+		(	set httpreq.indexH=nil;	// purger les données d'émission
+			set httpreq.outputH=nil;
+			nil
+		)
+	);;
+
+var http_prefurl="http://";;	// en-tête normal (mais ici facultatif) d'une requête http
+
+fun isip s i=
+	if i>=strlen s then 1
+	else let strget s i -> c in
+	if (c<'0' || c>'9')&&c!='.' then 0
+	else isip s i+1;;
+
+
+// découper une url en [host port path].
+// host est de la forme ip:port
+// path ne commence pas par /
+fun cuturl url =
+	if !strcmp (strsub url 0 strlen http_prefurl) http_prefurl then cuturl strsub url strlen http_prefurl strlen url
+	else let strstr url "/" 0 -> i in
+		let if i==nil then url else strsub url 0 i -> addr in
+		let strstr addr ":" 0 -> j in
+		let if j==nil then [addr 80]
+			else [strsub addr 0 j atoi strsub addr j+1 strlen addr] -> [host port] in
+		let if i==nil then "/" else strsub url i strlen url -> path in
+		[host port path];;
+
+fun tcpevent t val msg sock=
+	if val==TCPWRITE then tcpwrite t sock
+	else if val==TCPCLOSE then tcpread t nil sock
+	else tcpread t msg sock;
+	0;;
+
+
+fun httpsendreq ip x=
+	Secho "found ip>>>>>>>>>>>>>>>>>>>>>>>>>"; Secholn ip;
+	let x->[port httpreq] in
+	if ip==nil then (call httpreq.cbH [httpreq nil]; nil)
+	else
+	(
+		set httpreq.cnxH=opentcp netip nil useparamip ip port fixarg4 #tcpevent httpreq;
+		set httpreq.stateH=HTTP_REACH;
+		nil
+	);
+	0;;
+
+
+//##> création d'une requête http
+// paramètres : verb=verbe de la requête url=url de la requête postdata=données supplémentaires (nil si aucune) cb=callback de retour
+fun httprequest verb url postdata cb type=
+//	Secho "HTTPREQUEST url =";Secholn url;
+	let cuturl url ->[host port path] in	// décodage de l'url de la requête
+	let if confGetProxy then strcatlist "http://"::host::":"::(itoa port)::path::nil else path -> path in //Icy-MetaData:1\13\n
+	let strcatlist verb::" "::path::" HTTP/1.0\13\nUser-Agent: MTL\13\nPragma: no-cache\13\nIcy-MetaData:1\13\nHost: "::host::"\13\n"::
+			if postdata==nil then "\13\n"::nil
+			else "Content-length: "::(itoa strlen postdata)::"\13\n\13\n"::postdata::nil
+		-> request in	// création de la chaîne requête
+	let if confGetProxy then webip confGetProxyip else host -> host in
+	let if confGetProxy then confGetProxyport else port -> port in
+	let [outputH:request indexH:0 cbH:cb typeH:type stateH:HTTP_SOLVE aliveH:time_ms] -> httpreq in	// création de la structure requête
+	(
+		//Secho "HTTPREQUEST host = "; Secho host; Secho " Port = "; Iecho port; Secho " Request = "; Iecholn httpreq; 
+		if isip host 0 then httpsendreq host [port httpreq]
+		else
+		(
+			dnsreq host fixarg2 #httpsendreq [port httpreq];
+			nil
+		);
+		httpreq	// on retourne la structure requête pour pouvoir éventuellement l'interrompre en cours de route
+	);;
+
+//##> interruption d'une requête en cours
+fun httpabort httpreq=
+	closetcp httpreq.cnxH;;	// on ferme la socket de la requête
+
+fun httpenable httpreq v=
+	enabletcp httpreq.cnxH v;;
+
+fun httpstate httpreq = httpreq.stateH;;
+
+fun httpinactive httpreq = time_ms-httpreq.aliveH;;
+
+
+var http_sep="\13\n\13\n";;	// séparateur entre l'en-tête et le corps de la réponse à une requête
+
+	
+
+//##> retourne le header d'une réponse à une requête
+fun httpgetheader res =
+	let strstr res http_sep 0 -> i in
+	if i==nil then res
+	else strsub res 0 i+strlen http_sep;;
+
+//##> retourne le contenu d'une réponse à une requête (sans header)
+fun httpgetcontent res =
+	let strstr res http_sep 0 -> i in
+	if i==nil then nil
+	else strsub res i+strlen http_sep strlen res;;
+
+//-------------------
+
+ifdef RECLIB {
+var lrec;;
+var recording=0;;
+
+fun sqrt_ i i0 i1=
+	let (i0+i1)>>1 -> m in
+	if m==i0 then i0
+	else if m*m>i then sqrt_ i i0 m else sqrt_ i m i1;;
+fun sqrt i=sqrt_ i 0 256;;
+
+var buff;;
+var buffx;;
+var buffy;;
+
+fun cbrec s=
+/*	if buff==nil then set buff=strnew 505*2;
+	if buffx==nil then set buffx=strnew 505;
+	if buffy==nil then set buffy=strnew 505*2;
+	adp2wav buff 0 s 0 256;
+//	wav2alaw buffx 0 buff 0 505*2 1;
+//	alaw2wav buffy 0 buffx 0 505 1;
+	set s=wav2adp strnew 256 0 buff 0 505*2;
+*/
+	Iecho strlen s; Secho "!";
+	let 255-(Iecholn sqrt recVol s 0) -> vol in
+	let 255-((vol*vol)>>8) -> vol in
+	let vol<<16 -> vol in
+	(
+		led 1 vol; led 2 vol; led 3 vol
+	);
+	set lrec=s::lrec;
+	0;;
+
+fun itobin4 i=
+	let strnew 4 -> s in
+	(
+		strset s 0 i;
+		strset s 1 i>>8;
+		strset s 2 i>>16;
+		strset s 3 i>>24;
+		s
+	);;
+
+fun liststrlen l r=	if l==nil then r else liststrlen tl l r+strlen hd l;;
+
+fun mkriff ldata=
+	Secho "mkriff len=";
+	let Iecholn liststrlen ldata 0 -> len in
+	(strcatlist "RIFF"::(itobin4 len+52)::"WAVEfmt \$14\0\0\0\$11\0\1\0\$40\$1f\0\0\$d7\$0f\0\0\0\1\4\0\2\0\$f9\01"::
+	"fact\4\0\0\0"::(itobin4 (len>>8)*505)::"data"::(itobin4 len)::nil)::ldata;;
+
+fun recstart =
+	recStop;
+	Secholn "record";
+	set recording=1;
+	set lrec=nil;
+	recStart 8000 0 #cbrec;;
+
+fun recstop =
+	set recording=0;
+	recStop;;
+
+fun recriff =
+	let mkriff rev lrec nil -> res in
+	(
+		set lrec=nil;
+		res
+	);;
+
+}
+
+ifdef AUDIOLIB {
+
+var WAV_IDLE=0;;
+var WAV_RUN=1;;
+var WAV_EOF=2;;
+
+var WAV_BUFFER_STARTSIZE=80000;; //was 80000;; setting this to 1 caused a lot of cracking
+var WAV_BUFFER_MAXSIZE=400000;; //400000;;
+
+var WAV_END_TIMEOUT=2500;;  //was 500 
+var WAV_NET_TIMEOUT=13000;; //10000;; //always times out on 2nd msg cck oink
+
+var wav_end_timeout;;
+
+var wav_state=0;;
+var wav_http;;
+var wav_fifo;;
+var wav_buffering;;
+var wav_buffering_since=0;;
+var wav_index;;
+var wav_sample;; //cck
+var wav_lasttime;;
+var wav_lastnet;;
+var wav_zeros;;
+
+var lastvol;;
+var forcedvol=0;;
+
+fun updatevol=
+	let button3 -> v in
+	if !forcedvol && v!=lastvol && (!recording) && (lastvol!=255 || v<250) then
+	(
+		set lastvol=v;
+		let 255-v -> v in
+		sndVol 255-((v*v)>>8)
+	);;
+
+fun forcevol v=
+	sndVol v;
+	set forcedvol=1;
+	0;;
+
+fun unforcevol=
+	set forcedvol=0;
+	set lastvol=nil;
+	0;;
+
+fun wavgetzeros=
+	if wav_zeros==nil then
+	(
+		set wav_zeros=strnew 2048;
+		for i=0;i<2048 do strset wav_zeros i 0
+	);
+	wav_zeros;;
+
+fun wavstop =
+	if wav_state!=WAV_IDLE then
+	(
+		playStop;
+		if wav_http!=nil then httpabort wav_http;
+		set wav_http=nil;
+		set wav_state=WAV_IDLE
+	);;
+
+fun wavrunning =
+	if wav_state==WAV_IDLE then 0
+	else if wav_fifo==nil && wav_state==WAV_EOF && (time_ms-wav_lasttime>wav_end_timeout) then
+	(
+		wavstop;
+		0
+	)
+	else if wav_lasttime==nil then -1 else 1;;
+
+var mp3;;
+var mp3len;;
+var my_index;;
+var bytes_fed;;
+
+//fun playWav = 
+    //set wav_first=0;;
+    //wavstarthttp wav_url;;
+    
+var feed_delay;;
+
+fun _wavcb i = 
+
+    //Secholn ">> _wavcb"; set wav_lasttime=time_ms; Iecho i;Secho ":cbplay\n";
+
+    if wav_fifo==nil then 	
+	( 
+	    /*
+	    if wav_state==WAV_EOF then 
+	    (
+	        Secholn ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WAV_EOF";
+	        
+	        if (wav_first) then //play the saved mp3
+	        (
+	            Secholn ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> repeat";
+	            set wav_first=0;
+	            playFeed nil nil nil;
+	            set wav_fifo = wav_save_fifo;  //the saved mp3 buffer
+            	//sndVol 50;  //on, 0 is the max
+            	playStart 1024 #_wavcb;  //was 1024, tried 256, 512, 2048, 4096, 8192 - no dif
+                0
+	        )
+	        else
+	            playFeed nil nil nil;
+	        
+            0	        
+	    )
+	    */
+	    
+	    if wav_state==WAV_EOF then playFeed nil nil nil    //stop the player
+	    else 
+	    ( 
+	        if !wav_buffering then Secholn ">>>>buffering..............."; 
+	        set wav_buffering=1 
+	    )
+	) 
+	else 
+	( 
+	    if(wav_buffering) then Secholn "buffering";
+        //if(wav_state==WAV_EOF) then Secholn "WAV_EOF reached";
+    
+	    if wav_buffering && (wav_state==WAV_EOF || (slistlen wav_fifo)>=WAV_BUFFER_STARTSIZE) then set wav_buffering=0;
+
+        //Secho "wav len is "; Iecholn slistlen wav_fifo;
+    
+    	if !wav_buffering then let hd wav_fifo -> sample in  //get 1st list item from wav file  		
+        	let strlen sample -> len in                      //sample length is usually 1024 bytes
+            ( 
+                //set wav_index=wav_index+playFeed sample /*Iecho*/ wav_index nil; 
+    
+                //Secho "wav_index = ";Iecho wav_index; Secho ", len = ";Iecho len;Secho ", sample = ";Iecholn strlen sample;
+                set bytes_fed = playFeed sample wav_index nil;  //wav_index contains # bytes to load to audio buffer
+                      
+                /*
+                      
+                if bytes_fed < 1 && wav_index > 0 && len > 0 then 
+                (
+                    //set feed_delay = time_ms + 500;  //delay is millisecond
+               
+                    //Secholn "refeed";
+                    //while time_ms < feed_delay do Secholn "refeed";
+                    
+                    while bytes_fed < 1 do
+                    (
+                        //Secho "refeeding... bytes_fed = ";Iecho bytes_fed;Secho ", wav_index = ";Iecho wav_index;Secho ", sample = ";Iecholn strlen sample;
+                        set bytes_fed = playFeed sample wav_index nil;
+                        0
+                    );
+                    
+                    0
+                );
+                */
+                 
+                //for i=0;i<99 do Secholn "looping...";  //reproduces the cracking
+                
+                //Secho "bytes_fed = "; Iecholn bytes_fed;
+                
+                set wav_index = wav_index + bytes_fed; 
+               
+                //Secho "wav_index = "; Iecholn wav_index;
+        	    //Secho "len       = "; Iecholn len;
+        	    
+        	    if wav_index>=len then //fed?
+        	    ( 
+        	        set wav_index=0; 
+        	        set wav_fifo=tl wav_fifo;  //remove 1st list item 
+        	        //Secho "new wav_fifo = "; Iecholn slistlen wav_fifo;
+        	   	    if wav_http!=nil then if (slistlen wav_fifo)<WAV_BUFFER_MAXSIZE then httpenable wav_http 1 
+        	   	)
+        	    
+        	   	
+        	   	
+            ) 
+        ); 
+        //Secho "wav_first = "; Iecholn wav_first;
+        //set wav_first=0;
+    0;;
+
+fun _wavstartnow =
+  Secholn ">>>> _wavstartnow";
+ 	set wav_index=0;
+ 	set wav_sample=nil; //cck
+	set wav_buffering=1;   
+	Secholn ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> _wavstartnow";
+	playStart 1024 #_wavcb;;  //was 1024, tried 256, 512, 2048, 4096, 8192 - no dif
+    //playStart slistlen wav_fifo #_wavcb;;
+    
+fun wavstartlocalEx l timeout=
+	wavstop;
+	set wav_end_timeout=timeout;
+	set wav_fifo=conc l (wavgetzeros)::nil;
+	set wav_state=WAV_EOF;
+	set wav_lasttime=time_ms;
+	set wav_http=nil;
+	_wavstartnow
+	;;
+
+fun wavstartlocal l=wavstartlocalEx l WAV_END_TIMEOUT;;
+
+/*
+fun itobin4 i=strcatlist (ctoa i)::(ctoa i>>8)::(ctoa i>>16)::(ctoa i>>24)::nil;;
+fun itobin2 i=strcatlist (ctoa i)::(ctoa i>>8)::nil;;
+
+fun mkwav freq channel bps=
+	let strcatlist 
+		"WAVEfmt "::(itobin4 0x12)::
+			(itobin2 1)::(itobin2 channel)::
+			(itobin4 freq)::(itobin4 freq*channel*bps/8)::
+			(itobin2 channel*bps/8)::(itobin4 bps)::
+		"data"::(itobin4 0)::nil -> c in
+	strcatlist "RIFF"::(itobin4 (strlen c))::c::nil;; 
+*/
+
+fun _wavcbhttp httpreq req=  //saves the mp3 to a buffer and then calls _wavstartnow to play it when downloaded
+    Secholn ">> _wavcbhttp";
+	set wav_lastnet=time_ms;
+	
+	if req==nil then
+	(
+		Secholn ">>>>>>>>>>>>>>>>>>>>>>>>>>>>><end of file";
+		set wav_state=WAV_EOF;  //must be eof or won't fetch rest of wav 
+		if wav_fifo!=nil then set wav_fifo=conc wav_fifo (wavgetzeros)::nil;
+		
+		
+		if wav_index==nil then
+		(
+			set wav_fifo=tl wav_fifo;
+			if wav_fifo==nil then wavstop
+			else _wavstartnow  //cck commented out
+			
+		);
+		0
+	)
+	else
+	(
+	    //Secholn "dumping request";
+		//dump req;
+		
+		set wav_fifo=conc wav_fifo req::nil;  //store mp3 into variable
+		
+		set wav_save_fifo=wav_fifo;
+		
+		let slistlen wav_fifo -> n in
+		
+		if wav_index==nil && n>WAV_BUFFER_STARTSIZE then
+		(
+			set wav_fifo=tl wav_fifo;
+			_wavstartnow   //cck commented out
+			
+		)
+		else if n>WAV_BUFFER_MAXSIZE then
+		(
+			Secholn "\n>>>>>>>>>>>>>>http wait";
+			httpenable httpreq 0
+		);
+		nil
+	);
+	updatevol; 
+	0;;
+
+fun wavstarthttp url =             //downloads the mp3 via a callback to _wavcbhttp
+    Secholn ">>wavstarthttp";
+	//wavstop;
+	//gc; //cck call garbage collector
+	//sndRefresh;  //cck call audio chip refresh
+	set wav_end_timeout=WAV_END_TIMEOUT;
+	set wav_fifo=nil;
+	set wav_state=WAV_RUN;
+	set wav_index=nil;
+	set wav_sample=nil; //cck
+	set wav_buffering=1;
+	set wav_lasttime=nil;
+	set wav_lastnet=time_ms;
+	Secho "url = ";Secholn url;
+	set wav_url=url;
+	//sndVol 255;  //off
+	//httprequest verb url postdata cb type
+	set wav_http=httprequest "GET" url nil #_wavcbhttp HTTP_STREAM;; //HTTP_NORMAL;; //HTTP_DIRECT;; //HTTP_STREAM;; 
+ 
+ 
+ 
+fun wavtime =
+	if wav_http!=nil && wav_state==WAV_RUN && (time_ms-wav_lastnet>WAV_NET_TIMEOUT) then
+	(
+		if wav_http!=nil then
+		(
+			Secholn "####wavhttp abort";
+			httpabort wav_http;
+			set wav_http=nil;
+			_wavcbhttp wav_http nil;
+			0
+		)
+	);
+	0;;
+
+
+}
+
+
+//-------------------
+
+ifdef EARSLIB {
+
+// ears management
+
+var EARSMODE_RESET=0;;
+var EARSMODE_WAIT=1;;
+var EARSMODE_WAITANDDETECT=2;;
+var EARSMODE_DETECT=3;;
+
+var EARS_HOLES=17;;
+var EARS_TIMEOUT=2000;;
+var EARS_OFFZERO=2;;
+
+type Ear=[numE dirE targetE posE lvalE ldelayE ltimeE countE brokenE];;
+
+var ears;;
+var earsmode;;
+var earslastmove;;	// somme des deux compteurs
+var earslastmovetime;;	// heure du dernier mouvement (=nil=> acquisition en cours)
+
+var earevent;;
+
+fun eargetevent=
+	let earevent -> ev in
+	(
+		set earevent=nil;
+		ev
+	);;
+
+fun earCheck v=
+	if v<0 then earCheck v+EARS_HOLES
+	else if v>=EARS_HOLES then earCheck v-EARS_HOLES
+	else v;;
+
+fun earMotorset e val=
+	set e.dirE=val;
+	motorset e.numE val;;
+
+fun earReset=
+Secholn "earReset";
+	set earsmode=EARSMODE_RESET;
+	for i=0;i<2 do let ears.i -> e in
+	(
+		earMotorset e 1;
+		set e.brokenE=0;
+		set e.targetE=nil;
+		set e.lvalE=motorget i;
+		set e.ldelayE=nil;
+		set e.ltimeE=time_ms
+	);;
+
+fun earInit =
+	set ears=tabnew nil 2;
+	for i=0;i<2 do set ears.i=[numE:i];
+	earReset;;
+
+
+fun earStartDetect=
+	setleds 0xff8000;
+	set earsmode=EARSMODE_DETECT;
+	set earslastmovetime=time_ms;
+	set earslastmove=(motorget 0)+(motorget 1);;
+
+
+fun earDetectRun=
+	if earslastmovetime!=nil then
+	(
+		let (motorget 0)+(motorget 1)->newval in
+		if newval!=earslastmove then
+		(
+			Secho "new val ";Iecholn newval;
+			set earslastmove=newval;
+			set earslastmovetime=time_ms
+		)
+		else if time_ms-earslastmovetime>EARS_TIMEOUT then
+		(
+			set earslastmovetime=nil;
+			for i=0;i<2 do let ears.i -> e in
+			if e.brokenE!=1 then
+			(
+				set e.lvalE=motorget i;
+				set e.ldelayE=0;
+				set e.ltimeE=time_ms;
+				earMotorset e 1;
+				set e.countE=e.lvalE+EARS_HOLES
+			)
+		)
+	)
+	else
+	(
+		for i=0;i<2 do let ears.i -> e in
+			if e.brokenE!=1 then
+			if e.dirE then
+			let motorget i -> v in
+			if v!=e.lvalE then
+				let time_ms -> t in
+				let t-e.ltimeE -> d in
+				(
+					if d>e.ldelayE then
+					(
+						set e.posE=earCheck e.countE-e.lvalE-EARS_OFFZERO-1;
+						set e.ldelayE=d
+					);
+					set e.ltimeE=t;
+					set e.lvalE=v;
+					if v-e.countE>=0 then earMotorset e 0
+				);
+		if (ears.(0).dirE)==0 && (ears.(1).dirE)==0 then
+		(
+			set earevent=0x8000+(ears.(0).posE<<8)+(ears.(1).posE);
+			Secho "Acquisition : "; Iecho ears.(0).posE; Secho ", ";Iecholn ears.(1).posE;
+			set earsmode=EARSMODE_WAITANDDETECT
+		)
+	);;
+		
+fun earResetRun=
+	for i=0;i<2 do let ears.i -> e in
+	if e.dirE then
+	(
+		let motorget i -> v in
+		if v==e.lvalE then
+		(
+			let time_ms -> t in
+			let t-e.ltimeE -> d in
+			if d>5000 then
+			(
+				Secholn "broken ears :";
+				Iecholn i;
+				set e.brokenE=1;
+				set e.posE=0;
+				set e.lvalE=v;
+				set e.targetE=0;
+				set e.ldelayE=0;
+				earMotorset e 0
+			)
+		)
+		else
+		if e.targetE!=nil then
+		(
+			set e.posE=earCheck e.posE+v-e.lvalE;
+			set e.lvalE=v;
+			if e.posE==e.targetE then earMotorset e 0
+		)
+		else
+		let time_ms -> t in
+		let t-e.ltimeE -> d in
+		(
+			if (d<10000) && (d>700) && (nil!=e.ldelayE) then
+			(
+	//			Secho "gowait "; Iecholn d; Iecholn ldelay;
+				set e.posE=earCheck -EARS_OFFZERO;
+				set e.targetE=0
+			)
+			else
+			(
+	//			Secho "position "; Iecho e.numE; Secho " : "; Iecho v; Secho " during "; Iecholn d;
+				set e.ltimeE=t
+			);
+			set e.lvalE=v;
+			set e.ldelayE=d
+		)
+	);
+	if (ears.(0).dirE)==0 && (ears.(1).dirE)==0 then
+	(
+		set earsmode=EARSMODE_WAIT
+	);;
+
+fun earWaitRun=
+	for i=0;i<2 do let ears.i -> e in
+	if e.brokenE!=1 then
+	(
+		let motorget i -> v in
+		if v!=e.lvalE then
+		let v-e.lvalE-> dv in
+		if e.dirE then
+			(
+				set e.lvalE=v;
+				set e.posE=earCheck e.posE+ if e.dirE>0 then dv else -dv;
+				if e.posE==e.targetE then
+				(
+//				Secho "stop "; Iecholn e.numE;
+					earMotorset e 0
+				)
+			)
+		else if dv>2 then
+		(
+			set e.lvalE=v;
+			if earsmode==EARSMODE_WAITANDDETECT then earStartDetect
+		)
+	);;
+
+fun earRun=
+	if earsmode==EARSMODE_RESET then earResetRun
+	else if earsmode==EARSMODE_DETECT then earDetectRun
+	else earWaitRun;
+	0;;
+
+fun earReady= earsmode!=EARSMODE_RESET;;
+fun earDetecting= earsmode==EARSMODE_DETECT;;
+fun earComplete = earReady && (!ears.(0).dirE) && (!ears.(1).dirE);;
+
+fun earDetect=
+	if earsmode== EARSMODE_WAIT then set earsmode=EARSMODE_WAITANDDETECT;;
+
+fun earUndetect=
+	if earsmode== EARSMODE_WAITANDDETECT then set earsmode=EARSMODE_WAIT;;
+
+fun earStop=
+	Secholn "earStop";
+	if earsmode!=EARSMODE_RESET then for i=0;i<2 do earMotorset ears.i 0;
+	0;;
+
+fun earTarget i=ears.(i).targetE;;
+
+fun earGo i p d=
+	if earsmode==EARSMODE_WAIT ||earsmode==EARSMODE_WAITANDDETECT then
+	let ears.i->e in
+	let earCheck p->p in
+	if e.brokenE==1 then
+	(
+		Secho "earGo ";Iecho i; Secholn " broken !";
+		nil
+	)
+	else		
+	if p!=e.targetE then
+	(
+		Secho "earGo ";Iecho i; Secho " to ";Iecho p;Secho " dir ";Iecholn d;
+		set e.targetE=p;
+		earMotorset e if p==e.posE then 0 else if d then -1 else 1
+	);
+	0;;
+
+}
+
+//-------------------
+ifdef INFOLIB {
+
+var infodata;;
+var infosrc;;
+
+fun infoInit=
+	set infosrc=tabnew 0 32;
+
+	set infodata=
+[0
+{
+	[4 {3 3 3 0 0 0}]
+	[4 {0 3 0 4 0 4}]
+	[3 {4 4 4 4 4 4 4 4 4 0 0 0}]
+	[3 {4 0 0 0 0 4 0 0 0 0 4 0 4 0 0 0 0 0 4 0 4 0 0 0}]
+	[4 {4 0 0 0 4 0 4 0 0 0 4 0 0 0 4 0 4 0 0 0 4 0 4 0}]
+	[3 {0 3 4 3 4 0xd5 0x47 0 0 4 3 0 0 4 3 0 0 0 3 4 0 0 0 0}]
+}
+]::
+[1
+{
+	[1 {0 0 11 0 11 0 11 0 0 0 0 0}]
+	[2 {0 0 11 0 11 0 11 0 0 0 0 0}]
+	[3 {0 0 11 0 11 0 11 0 0 0 0 0}]
+	[4 {0 11 0 0 0 0}]
+	[3 {11 0 0 0 11 0 0 0 11 0 0 0}]
+	[2 {11 0 0 0 11 0 0 0 11 0 0 0}]
+	[1 {11 0 0 0 11 0 0 0 11 0 0 0}]
+}
+]::
+[2
+{
+	[6 {9 0 9 0 0 0}]
+	[5 {0 9 0 9 0 9 0 0 0 0 0 0}]
+	[4 {0 9 0 9 0 9 0 0 0 0 0 0}]
+	[3 {0 9 0 9 0 9 0 0 0 0 0 0}]
+	[2 {0 9 0 9 0 9 0 0 0 0 0 0}]
+	[1 {0 9 0 9 0 9 0 0 0 0 0 0}]
+	[0 {0 9 0 9 0 9 0 0 0 0 0 0}]
+}
+]::
+[5
+{
+	[3 {5 0 0 0 5 0 0 0 5 0 5 0}]
+	[3 {0 5 0 0 0 0}]
+	[3 {5 0 5 0 0 0}]
+	[3 {5 5 5 0 0 0}]
+}
+]::
+[6
+{
+	[4 {6 6 6 6 6 6 6 6 6 0 0 0}]
+	[4 {6 6 6 6 6 6 6 6 6 0 0 0}]
+	[4 {6 6 6 6 6 6 6 6 6 0 0 0}]
+	[4 {6 6 6 6 6 6 6 6 6 0 0 0}]
+	[4 {6 6 6 6 6 6 6 6 6 0 0 0}]
+	[3 {6 0 0 0 6 0 6 6 0 6 6 6 0 6 6 0 0 6 6 0 6 6 6 6}]
+	[3 {6 0 0 0 6 0 6 6 0 6 6 6 0 6 6 0 0 6 6 0 6 6 6 6}]
+	[3 {6 0 0 0 6 0 6 6 0 6 6 6 0 6 6 0 0 6 6 0 6 6 6 6}]
+	[2 {6 0 0 0 6 0 6 6 0 6 6 6 0 6 6 0 0 6 6 0 6 6 6 6}]
+	[2 {6 0 0 0 6 0 6 6 0 6 6 6 0 6 6 0 0 6 6 0 6 6 6 6}]
+	[2 {6 0 0 0 6 0 6 6 0 6 6 6 0 6 6 0 0 6 6 0 6 6 6 6}]
+}
+]::
+nil;;
+
+var col={
+	0x000000 0xff0000 0x00ff00 0xffff00 0x0000ff 0xff00ff 0x00ffff 0xffffff
+	0x808080 0xff8080 0x80ff80 0xffff80 0x8080ff 0xff80ff 0x80ffff 0xff8000
+};;
+
+
+var infoType;;
+var infoVal;;
+var infoInd;;
+var infoCount;;
+
+var infoTime;;
+var infoIndex=0;;
+
+var INFO_TIMEOUT=10;;
+
+fun infobytype i=listswitch infodata i;;
+
+fun nextindex src i=
+	let i+2-> i in
+	if i>=16 then 0 else if src.i then i else nextindex src i;;
+
+fun infoNext=
+	set infoIndex=nextindex infosrc infoIndex;
+	set infoType=(infosrc.(infoIndex))-1;
+	set infoVal=infosrc.(infoIndex+1);
+	set infoTime=time;
+	set infoInd=0;
+	let infobytype infoType -> t0 in
+	if t0==nil then set infoTime=nil
+	else set infoCount=let t0.infoVal ->[c0 _] in 2<<c0;
+	0;;
+
+fun dumpinfosrc=
+	for i=0;i<16 do (Iecho infosrc.i;Secho " : ");
+	Secholn ""
+	;;
+
+//sets leds to off unless ears are moving
+fun infoRun=
+  //Secholn ">>>> inforun";
+  
+	if !earDetecting then
+	(
+		set infoType=(infosrc.(infoIndex))-1;
+		if infoTime==nil || (time-infoTime>INFO_TIMEOUT) || infoType<0 then infoNext;
+
+		let infosrc.(16+2) -> msg1 in
+		let infosrc.(16+3) -> msg2 in
+		let (time_ms>>8)&7 -> t in
+			led 0 if (t==1 && msg1) || (t==3 && msg1 && msg2) then 0xff00ff else 0;
+
+		set infoType=(infosrc.(infoIndex))-1;
+		set infoVal=infosrc.(infoIndex+1);
+		let infobytype infoType -> t0 in
+		let t0.infoVal ->[c0 t] in
+		if t!=nil then
+		(
+			led 1 col.(t.infoInd);
+			led 2 col.(t.(1+infoInd));
+			led 3 col.(t.(2+infoInd));
+			if (set infoCount=infoCount-1)<=0 then
+			(
+				set infoInd=infoInd+3;
+				set infoCount=2<<c0;
+				if infoInd>=tablen t then set infoInd=0
+			)
+		)
+		else
+		(
+			led 3 0; led 2 0; led 1 0
+		)
+	);;
+		
+
+fun infoUpdate data=
+	let strlen data -> len in
+	for i=0;i<len do set infosrc.i=strget data i;
+	0;;
+
+fun infoGet_ i typ=
+	if i>=tablen infosrc then 0
+	else if typ==infosrc.i then infosrc.(i+1)
+	else infoGet_ i+1 typ;;
+
+fun infoGet typ=infoGet_ 0 typ;;
+	
+
+
+}
+
+//-------------------
+
+
+
+fun setleds col= for i=0;i<5 do led i col;;
+
+
+var RT2501_S_BROKEN=0;;
+var RT2501_S_IDLE=1;;
+var RT2501_S_SCAN=2;;
+var RT2501_S_CONNECTING=3;;
+var RT2501_S_CONNECTED=4;;
+var RT2501_S_MASTER=5;;
+
+var IEEE80211_M_MANAGED=0;;
+var IEEE80211_M_MASTER=1;;
+
+var wifitry;;
+
+
+
+fun _scanserialize l=
+	if l!=nil then
+	let hd l->[ssid mac bssid rssi channel rateset encryption] in
+	ssid::"\0"::mac::bssid::(itoh4 rssi)::(itoh4 channel)::(itoh4 rateset)::(itoh4 encryption)::
+	_scanserialize tl l;;
+
+fun scanserialize l=
+	(itoh4 listlen l)::_scanserialize l;;
+
+
+fun ssidlen s i=
+	if i>=strlen s then i
+	else if !strget s i then i
+	else ssidlen s i+1;;
+
+fun scanunserialize s n i0=
+	if n>0 then
+	let ssidlen s i0 -> j in
+	let j+1->i in
+	[
+		strsub s i0 j-i0
+		strsub s i 6
+		strsub s i+6 6
+		htoi strsub s i+12 8
+		htoi strsub s i+20 8
+		htoi strsub s i+28 8
+		htoi strsub s i+36 8
+	]::scanunserialize s n-1 i+44;;
+
+
+fun envmake =
+	strcatlist netip::netmask::netgateway::netdns::scanserialize wifiscans;;
+
+fun envrestore s =
+	if s!=nil then
+	(
+		set netip=strsub s 0 4;
+		set netmask=strsub s 4 4;
+		set netgateway=strsub s 8 4;
+		set netdns=strsub s 12 4;
+		let htoi strsub s 16 8 -> nscan in
+		set wifiscans=scanunserialize s nscan 24;
+		0
+	);;
+
+fun scancmpssid a b=
+	let a->[sa _ _ _ _ _ _] in
+	let b->[sb _ _ _ _ _ _] in
+	strcmp sa sb;;
+
+
+fun wifiInit rescan=
+	set wifitry=nil;
+	let envget -> env in
+	if env==nil then
+	(
+		setleds 0xff00ff;
+		set wifi=initW;
+		if rescan then set wifiscans=nil;
+		if master then
+		(
+			set netip=netip_master;
+			set netmask=netmask_master;
+			set netgateway=netgateway_master;
+			0
+		)
+		else
+		(
+			if confGetDhcp then	set netip=netip_empty
+			else
+			(
+				set netmask=confGetNetmask;
+				set netgateway=confGetNetgateway;
+				set netdns=confGetNetdns;
+				set netip=confGetNetip
+			);
+			0
+		);
+		0
+	)
+	else
+	(
+		setleds 0x00ff00;
+		set mymac=netMac;
+		set wifi=stationW;
+		envrestore env;
+		envset nil;
+		nil
+	);
+	0;;
+
+var laststate;;
+
+fun wifibyssid x v=let x->[s _ _ _ _ _ _] in (s!=nil)&& !strcmp v s;;
+
+
+var retrytime;;
+
+fun _wifiwepkey val i len=
+	if i<len then
+	(htoi strsub val i 2)::_wifiwepkey val i+2 len;;
+
+fun wifiwepkey val=
+	let strlen val -> len in
+	if len==5 || len==13 then val
+	else let strreplace val ":" "" -> val in
+	let if len<10 then 0 else if len<26 then 5 else 13 -> len in
+	listtostr _wifiwepkey val 0 len<<1;;
+
+fun wificrypttype crypt key=
+	if crypt==1 then if 5==strlen key then IEEE80211_CRYPT_WEP64 else IEEE80211_CRYPT_WEP128
+	else if crypt==2 then IEEE80211_CRYPT_WPA
+	else IEEE80211_CRYPT_NONE;;
+
+fun wifiAuth=
+	setleds 0xff8000;
+	if wifiscans==nil then 0
+	else
+		let Iecholn confGetWificrypt -> crypt in
+		let confGetWifiauth -> auth in
+		let if crypt==1 then wifiwepkey confGetWifikey0
+			else if crypt==2 then confGetWifipmk -> key in
+		(
+			dump key;
+			set wifitry=time;
+			netAuth hd wifiscans Iecholn auth (Iecholn wificrypttype crypt key) key;	//## ajouter les paramètres de crypto
+			1
+		);;
+
+fun wifiRun=
+	let netState -> state in
+	(
+		if state!=laststate then (Secho "wifi state=";Iecholn state);
+		let match wifi with
+		(stationW -> nil)
+		|(initW -> if state==RT2501_S_IDLE then
+				(
+					set mymac=MACecho netMac 0 1;
+					setleds 0xff8000;
+					if master then
+					(
+						dumpscan set wifiscans=sort netScan nil #scancmpssid;
+						netSetmode IEEE80211_M_MASTER (strcat "Nabaztag" ctoh strget mymac 5) 1;
+						Secholn "-------------gomaster";
+						gomasterW
+					)
+					else
+					(
+						if wifiscans==nil then
+						(
+							let confGetWifissid -> ssid in
+							let if strlen ssid then ssid else nil -> ssid in
+							let netScan ssid -> lscan in
+							let sort lscan #scancmpssid -> l in
+							let if ssid==nil then l else select l ssid #wifibyssid-> l in
+							dumpscan set wifiscans=l
+						);
+						if wifiAuth then
+						(
+							Secho confGetWifissid; Secholn ":-------------gostation";
+							gostationW [0 time]
+						)
+					)
+				)
+			)
+		|(gomasterW -> if state==RT2501_S_MASTER then
+				(
+					setleds 0x0000ff;
+					Secholn "-------------master";
+					startdhcpserver;
+//					startconfigserver 80;
+					masterW)
+			)
+		|(masterW -> if !master then
+					(
+						wifiInit 1;
+						resetudp;
+						netSetmode IEEE80211_M_MANAGED nil 11;
+						nil)
+			)
+		|(gostationW x-> if state==RT2501_S_CONNECTED then
+				(
+					Secholn "-------------dhcp";
+					if confGetDhcp then startdhcp;
+					startdnsclient;
+					dhcpW time
+				)
+			)
+		|(dhcpW t-> if netip!=netip_empty then
+				(
+					Secholn "-------------station";
+					stationW
+				)
+				else if (time-t)>3 then	// retry dhcp client
+				(
+					startdhcp;
+					dhcpW time
+				)
+			)
+		|(reconnectW ->
+			netSetmode IEEE80211_M_MANAGED nil 11;
+			if wifiAuth then
+			(
+				Secho confGetWifissid; Secholn ":-------------gostation";
+				gostationW [0 time]
+			)
+		 )
+		-> nwifi in
+		if nwifi!=nil then set wifi=nwifi;
+		set laststate=state
+	);
+	if retrytime!=time then
+	(
+		set retrytime=time;
+		nettime;
+		dnstime;
+		0
+	)
+	;;
+
+fun wifiReady= match wifi with (stationW -> 1)|(_ -> 0);;
+
+fun wifiConnected= match wifi with (stationW -> 1)|(_ -> 0);;
+
+
+
+
+
+
+
+ifdef NOMINAL {		
+
+var TYPE_taichi=14;;
+
+var tab_osc={
+	0 0 0 0 0 0 1 1 2 3 3 4 5 6 7 8 
+	9 10 12 13 15 16 18 19 21 23 25 27 29 31 33 35 
+	37 39 42 44 46 49 51 54 56 59 62 64 67 70 73 76 
+	79 81 84 87 90 93 96 99 103 106 109 112 115 118 121 124
+};;
+
+
+fun osc x=
+	let (x>>6)&3 -> q in
+	let x&255 -> x in
+	if q==0 then tab_osc.x
+	else if q==1 then 255-tab_osc.(127-x)
+	else if q==2 then 255-tab_osc.(x-128)
+	else tab_osc.(255-x);;
+
+
+var midi_connect=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$5d\$00\$ff\$51\$03\$10\$59\$43\$00\$c0\$09\
+\$02\$90\$58\$5a\$12\$48\$62\$31\$60\$62\$0a\$80\$58\$78\$2c\$90\
+\$58\$52\$12\$80\$60\$54\$43\$90\$60\$49\$04\$80\$58\$6c\$33\$90\
+\$58\$45\$05\$80\$60\$6a\$81\$00\$90\$60\$40\$22\$80\$58\$6f\$7a\
+\$90\$5d\$58\$03\$80\$48\$49\$04\$60\$52\$0b\$90\$4f\$48\$84\$24\
+\$80\$5d\$4d\$11\$4f\$76\$81\$3a\$90\$30\$01\$74\$80\$30\$40\$00\
+\$ff\$2f\$00";;
+
+type Run= configstartRun | configwaitRun _|  pingstartRun |pingwaitRun _|
+	msgloadstartRun | msgloadwaitRun _ | msginitwaitRun | msgchorRun _ |msgchorstreamRun _ | msgRun _| idlewaitRun | waitRun _ |
+	pingsendwaitRun _ |recordRun |recordwaitRun _|asleepRun |recordStartRun | callbackRun _ | textRun _ | textInitWaitRun;;
+
+var run;;
+var pingsrv;;
+var broadcasturl;;
+var senddata=0;;
+var currenttrame=0;;
+var pingdelay=28;;  //cck was 28, orig 10 
+var recorddelay=4;;
+
+var sources;;
+var extleft;;
+var extright;;
+
+var msgtoplay;;
+var texttoplay;;
+var msgtimestart;;
+var rsctoget;;
+var rscloaded;;
+var rsctmp;;	// buffer de chargement des ressources en petits morceaux
+
+proto _pingcbhttp 2;;
+proto _pingcbhttp2 2;;
+
+var BROADCAST_KEYWORD="broadcast";;
+var SIGNCUTSIZE=40000;; // taille max du fichier audio de signature
+
+var MSG_IDLE=0x7fffffff;;
+var MSG_ASLEEP=0x7ffffffe;;
+
+var STREAMING_MOTORSTOP=60;;
+var STREAMING_PING=60;;
+
+var LED_TIMEOUT=600;;
+var CH_frame_duration=1;;
+//var CH_set_color=6;;
+var CH_set_led_color=7;;
+var CH_set_motor=8;;
+var CH_set_led_palette=14;;
+//var CH_set_palette=15;;
+var CH_randmidi=16;;
+var CH_avance=17;;
+var CH_ifne=18;;
+var CH_attend=19;;
+
+var palette;;
+
+var palettes=
+{
+	{255 12 0 0 255 31 255 242 0 0 3 255 255 242 0 0 255 31 255 12 0 0 0 0}
+	{95 0 255 127 0 255 146 0 255 191 0 255 223 0 255 255 0 223 255 0 146 0 0 0}
+	{255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 0 0 0}
+	{254 128 2 243 68 2 216 6 7 200 4 13 170 0 24 218 5 96 207 6 138 0 0 0}
+	{20 155 18 255 0 0 252 243 5 20 155 18 252 243 5 255 0 0 20 155 18 0 0 0}
+	{252 238 71 206 59 69 85 68 212 78 167 82 243 75 153 151 71 196 255 255 255 0 0 0}
+	{204 255 102 204 255 0 153 255 0 51 204 0 0 153 51 0 136 0 0 102 510 0 0}
+	{204 255 102 204 255 0 153 255 0 51 204 0 0 153 51 0 136 0 0 102 510 0 0}
+};;
+
+var midi_acquired=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$71\$00\$ff\$03\$07\$63\$6f\$6d\$70\$72\$69\
+\$73\$00\$ff\$51\$03\$07\$a1\$20\$00\$ff\$58\$04\$04\$02\$18\$08\
+\$00\$c0\$0c\$7a\$90\$34\$50\$6f\$53\$1a\$08\$80\$34\$40\$81\$02\
+\$53\$40\$15\$90\$64\$27\$81\$02\$54\$37\$08\$80\$64\$40\$81\$02\
+\$54\$40\$15\$90\$34\$50\$81\$02\$53\$2b\$07\$80\$34\$40\$81\$02\
+\$53\$40\$16\$90\$43\$3f\$81\$02\$64\$60\$07\$80\$43\$40\$81\$02\
+\$64\$40\$15\$90\$54\$5c\$55\$80\$54\$40\$83\$39\$90\$25\$01\$74\
+\$80\$25\$40\$00\$ff\$2f\$00";;
+
+var midi_abort=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$5a\$00\$ff\$03\$05\$73\$74\$6f\$70\$30\$00\
+\$ff\$51\$03\$07\$a1\$20\$00\$ff\$58\$04\$04\$02\$18\$08\$00\$c9\
+\$00\$00\$c4\$09\$03\$99\$2a\$7f\$00\$2c\$7f\$00\$56\$7f\$00\$94\
+\$24\$7f\$00\$28\$64\$00\$2d\$64\$01\$99\$3c\$64\$0a\$84\$24\$40\
+\$01\$28\$40\$01\$2d\$40\$0b\$89\$2a\$40\$00\$56\$40\$01\$2c\$40\
+\$00\$3c\$40\$81\$52\$99\$2c\$01\$1a\$89\$2c\$40\$00\$ff\$2f\$00";;
+
+var midi_ears=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$9b\$00\$ff\$03\$0b\$63\$6f\$6d\$6d\$75\$6e\
+\$69\$6f\$6e\$30\$30\$00\$ff\$51\$03\$10\$59\$43\$00\$ff\$58\$04\
+\$04\$02\$18\$08\$00\$c0\$0c\$02\$90\$60\$67\$04\$48\$6a\$7b\$5f\
+\$4d\$12\$80\$60\$65\$2a\$90\$5d\$51\$0b\$80\$5f\$76\$18\$48\$2b\
+\$10\$5d\$7f\$07\$90\$60\$64\$08\$4f\$5e\$7c\$5f\$52\$15\$80\$60\
+\$71\$19\$90\$5d\$56\$1a\$80\$5f\$6c\$15\$5d\$7f\$0e\$90\$58\$56\
+\$0c\$80\$4f\$7c\$14\$90\$4d\$5e\$6e\$80\$58\$73\$01\$90\$5d\$62\
+\$75\$80\$5d\$7a\$0d\$4d\$67\$05\$90\$5b\$5a\$05\$54\$60\$2a\$80\
+\$5b\$65\$81\$1e\$54\$60\$51\$90\$58\$60\$15\$4c\$6a\$81\$1e\$80\
+\$58\$63\$0e\$4c\$45\$4d\$90\$24\$01\$72\$80\$24\$40\$00\$ff\$2f\
+\$00";;
+
+var midi_communion=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$9b\$00\$ff\$03\$0b\$63\$6f\$6d\$6d\$75\$6e\
+\$69\$6f\$6e\$30\$30\$00\$ff\$51\$03\$10\$59\$43\$00\$ff\$58\$04\
+\$04\$02\$18\$08\$00\$c0\$0c\$02\$90\$60\$67\$04\$48\$6a\$7b\$5f\
+\$4d\$12\$80\$60\$65\$2a\$90\$5d\$51\$0b\$80\$5f\$76\$18\$48\$2b\
+\$10\$5d\$7f\$07\$90\$60\$64\$08\$4f\$5e\$7c\$5f\$52\$15\$80\$60\
+\$71\$19\$90\$5d\$56\$1a\$80\$5f\$6c\$15\$5d\$7f\$0e\$90\$58\$56\
+\$0c\$80\$4f\$7c\$14\$90\$4d\$5e\$6e\$80\$58\$73\$01\$90\$5d\$62\
+\$75\$80\$5d\$7a\$0d\$4d\$67\$05\$90\$5b\$5a\$05\$54\$60\$2a\$80\
+\$5b\$65\$81\$1e\$54\$60\$51\$90\$58\$60\$15\$4c\$6a\$81\$1e\$80\
+\$58\$63\$0e\$4c\$45\$4d\$90\$24\$01\$72\$80\$24\$40\$00\$ff\$2f\
+\$00";;
+
+var midi_ack=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$55\$00\$ff\$03\$07\$65\$66\$66\$61\$63\$65\
+\$30\$00\$ff\$51\$03\$10\$59\$43\$00\$ff\$58\$04\$04\$02\$18\$08\
+\$00\$90\$3c\$7f\$00\$41\$7f\$00\$48\$7f\$00\$4f\$7f\$00\$54\$7f\
+\$00\$c0\$77\$00\$c1\$74\$84\$54\$80\$4f\$40\$40\$91\$30\$7f\$00\
+\$53\$64\$1a\$80\$41\$40\$00\$54\$40\$00\$81\$30\$40\$00\$53\$40\
+\$3c\$80\$48\$40\$1e\$3c\$40\$00\$ff\$2f\$00";;
+
+
+/*
+var CH_frame_duration=1;;
+var CH_set_led_color=7;;
+var CH_set_motor=8;;
+var CH_set_led_palette=14;;
+var CH_randmidi=16;;
+var CH_avance=17;;
+var CH_ifne=18;;
+var CH_attend=19;;
+*/
+
+//set all leds blue
+var ledtry=
+"\$00\$00\$0f\$6f\$00\
+\$07\$01\$00\$33\$ff\$00\$00\$00\
+\$07\$02\$00\$33\$ff\$00\$00\$00\
+\$07\$03\$00\$33\$ff\$00\$00\$00\
+\$07\$04\$00\$33\$ff\$00\$00\$00\
+\$01\$ff\$0a";;
+
+var taichi=
+"\$00\$00\$0f\$6f\$00\$01\$0a\$00\$10\$00\$01\$04\$01\$07\$04\$00\
+\$33\$ff\$00\$00\$00\$07\$02\$ff\$00\$00\$00\$00\$00\$07\$00\$ff\
+\$ff\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\$00\$00\$07\$02\$00\
+\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$00\$07\$01\$ff\
+\$ff\$00\$00\$00\$01\$07\$01\$00\$00\$00\$00\$00\$00\$07\$04\$ff\
+\$ff\$00\$00\$00\$00\$07\$02\$00\$ee\$00\$00\$00\$00\$07\$00\$ff\
+\$00\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\$00\$00\$07\$02\$00\
+\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$00\$07\$03\$00\
+\$ee\$00\$00\$00\$01\$07\$03\$00\$00\$00\$00\$00\$00\$07\$04\$ee\
+\$00\$00\$00\$00\$00\$07\$01\$00\$33\$ff\$00\$00\$01\$07\$04\$00\
+\$00\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\$00\$00\$07\$04\$ff\
+\$00\$00\$00\$00\$00\$07\$00\$ff\$ff\$00\$00\$00\$01\$07\$04\$00\
+\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$00\$07\$03\$00\
+\$33\$ff\$00\$00\$01\$07\$03\$00\$00\$00\$00\$00\$00\$07\$02\$ff\
+\$ff\$00\$00\$00\$00\$07\$00\$ff\$00\$00\$00\$00\$01\$07\$02\$00\
+\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$01\$07\$03\$ee\
+\$00\$00\$00\$00\$00\$07\$00\$00\$ee\$00\$00\$00\$01\$07\$03\$00\
+\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$00\$07\$03\$ff\
+\$00\$00\$00\$00\$00\$07\$02\$00\$ee\$00\$00\$00\$01\$07\$03\$00\
+\$00\$00\$00\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\$07\$01\$00\
+\$33\$ff\$00\$00\$01\$07\$01\$00\$00\$00\$00\$00\$01\$07\$04\$00\
+\$33\$ff\$00\$00\$00\$07\$02\$ff\$00\$00\$00\$00\$00\$07\$00\$ff\
+\$ff\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\$00\$00\$07\$02\$00\
+\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$00\$07\$01\$ff\
+\$ff\$00\$00\$00\$01\$07\$01\$00\$00\$00\$00\$00\$00\$07\$04\$ff\
+\$ff\$00\$00\$00\$00\$07\$02\$00\$ee\$00\$00\$00\$00\$07\$00\$ff\
+\$00\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\$00\$00\$07\$02\$00\
+\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$00\$07\$03\$00\
+\$ee\$00\$00\$00\$01\$07\$03\$00\$00\$00\$00\$00\$00\$07\$04\$ee\
+\$00\$00\$00\$00\$00\$07\$01\$00\$33\$ff\$00\$00\$01\$07\$04\$00\
+\$00\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\$00\$00\$07\$04\$ff\
+\$00\$00\$00\$00\$00\$07\$00\$ff\$ff\$00\$00\$00\$01\$07\$04\$00\
+\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$00\$07\$03\$00\
+\$33\$ff\$00\$00\$01\$07\$03\$00\$00\$00\$00\$00\$00\$07\$02\$ff\
+\$ff\$00\$00\$00\$00\$07\$00\$ff\$00\$00\$00\$00\$01\$07\$02\$00\
+\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$01\$07\$03\$ee\
+\$00\$00\$00\$00\$00\$07\$00\$00\$ee\$00\$00\$00\$01\$07\$03\$00\
+\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$00\$07\$03\$ff\
+\$00\$00\$00\$00\$00\$07\$02\$00\$ee\$00\$00\$00\$01\$07\$03\$00\
+\$00\$00\$00\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\$07\$01\$00\
+\$33\$ff\$00\$00\$01\$07\$01\$00\$00\$00\$00\$00\$00\$01\$0a\$00\
+\$12\$00\$03\$43\$00\$01\$08\$00\$07\$04\$ee\$00\$00\$00\$00\$00\
+\$07\$03\$ee\$00\$00\$00\$00\$00\$07\$02\$ee\$00\$00\$00\$00\$00\
+\$07\$01\$ee\$00\$00\$00\$00\$00\$07\$00\$ee\$00\$00\$00\$00\$00\
+\$11\$01\$04\$00\$11\$00\$04\$01\$07\$04\$00\$00\$00\$00\$00\$00\
+\$07\$03\$00\$00\$00\$00\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\
+\$07\$01\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$01\
+\$07\$04\$ee\$00\$00\$00\$00\$00\$07\$03\$ee\$00\$00\$00\$00\$00\
+\$07\$02\$ee\$00\$00\$00\$00\$00\$07\$01\$ee\$00\$00\$00\$00\$00\
+\$07\$00\$ee\$00\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\$00\$00\
+\$07\$03\$00\$00\$00\$00\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\
+\$07\$01\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$20\
+\$07\$04\$ee\$00\$00\$00\$00\$00\$07\$03\$ee\$00\$00\$00\$00\$00\
+\$07\$02\$ee\$00\$00\$00\$00\$00\$07\$01\$ee\$00\$00\$00\$00\$00\
+\$07\$00\$ee\$00\$00\$00\$00\$00\$11\$01\$04\$00\$11\$00\$04\$01\
+\$07\$04\$00\$00\$00\$00\$00\$00\$07\$03\$00\$00\$00\$00\$00\$00\
+\$07\$02\$00\$00\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\$00\$00\
+\$07\$00\$00\$00\$00\$00\$00\$01\$07\$04\$ee\$00\$00\$00\$00\$00\
+\$07\$03\$ee\$00\$00\$00\$00\$00\$07\$02\$ee\$00\$00\$00\$00\$00\
+\$07\$01\$ee\$00\$00\$00\$00\$00\$07\$00\$ee\$00\$00\$00\$00\$01\
+\$07\$04\$00\$00\$00\$00\$00\$00\$07\$03\$00\$00\$00\$00\$00\$00\
+\$07\$02\$00\$00\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\$00\$00\
+\$07\$00\$00\$00\$00\$00\$00\$20\$07\$04\$ee\$00\$00\$00\$00\$00\
+\$07\$03\$ee\$00\$00\$00\$00\$00\$07\$02\$ee\$00\$00\$00\$00\$00\
+\$07\$01\$ee\$00\$00\$00\$00\$00\$07\$00\$ee\$00\$00\$00\$00\$00\
+\$11\$01\$05\$00\$11\$00\$05\$01\$07\$04\$00\$00\$00\$00\$00\$00\
+\$07\$03\$00\$00\$00\$00\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\
+\$07\$01\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$01\
+\$07\$04\$ee\$00\$00\$00\$00\$00\$07\$03\$ee\$00\$00\$00\$00\$00\
+\$07\$02\$ee\$00\$00\$00\$00\$00\$07\$01\$ee\$00\$00\$00\$00\$00\
+\$07\$00\$ee\$00\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\$00\$00\
+\$07\$03\$00\$00\$00\$00\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\
+\$07\$01\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$20\
+\$07\$04\$ee\$00\$00\$00\$00\$00\$07\$03\$ee\$00\$00\$00\$00\$00\
+\$07\$02\$ee\$00\$00\$00\$00\$00\$07\$01\$ee\$00\$00\$00\$00\$00\
+\$07\$00\$ee\$00\$00\$00\$00\$00\$11\$01\$04\$00\$11\$00\$04\$01\
+\$07\$04\$00\$00\$00\$00\$00\$00\$07\$03\$00\$00\$00\$00\$00\$00\
+\$07\$02\$00\$00\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\$00\$00\
+\$07\$00\$00\$00\$00\$00\$00\$01\$07\$04\$ee\$00\$00\$00\$00\$00\
+\$07\$03\$ee\$00\$00\$00\$00\$00\$07\$02\$ee\$00\$00\$00\$00\$00\
+\$07\$01\$ee\$00\$00\$00\$00\$00\$07\$00\$ee\$00\$00\$00\$00\$01\
+\$07\$04\$00\$00\$00\$00\$00\$00\$07\$03\$00\$00\$00\$00\$00\$00\
+\$07\$02\$00\$00\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\$00\$00\
+\$07\$00\$00\$00\$00\$00\$00\$17\$07\$04\$ee\$00\$00\$00\$00\$00\
+\$07\$03\$ee\$00\$00\$00\$00\$00\$07\$02\$ee\$00\$00\$00\$00\$00\
+\$07\$01\$ee\$00\$00\$00\$00\$00\$07\$00\$ee\$00\$00\$00\$00\$01\
+\$07\$04\$00\$00\$00\$00\$00\$00\$07\$03\$00\$00\$00\$00\$00\$00\
+\$07\$02\$00\$00\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\$00\$00\
+\$07\$00\$00\$00\$00\$00\$00\$01\$07\$04\$ee\$00\$00\$00\$00\$00\
+\$07\$03\$ee\$00\$00\$00\$00\$00\$07\$02\$ee\$00\$00\$00\$00\$00\
+\$07\$01\$ee\$00\$00\$00\$00\$00\$07\$00\$ee\$00\$00\$00\$00\$01\
+\$07\$00\$00\$00\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\$00\$00\
+\$07\$02\$00\$00\$00\$00\$00\$00\$07\$03\$00\$00\$00\$00\$00\$00\
+\$07\$04\$00\$00\$00\$00\$00\$00\$12\$01\$01\$6b\$00\$01\$14\$00\
+\$07\$02\$00\$ee\$00\$00\$00\$00\$11\$01\$06\$00\$11\$00\$06\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$00\$ee\$00\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$00\$00\$ff\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$99\$ff\$00\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$ff\$00\$00\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$cc\$00\$ff\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$00\$ff\$ff\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$00\$11\$01\$05\$00\$11\$00\$05\$01\
+\$07\$02\$ff\$cc\$00\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$02\$00\$99\$ff\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$02\$ee\$00\$00\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$02\$ff\$00\$00\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$02\$cc\$00\$ff\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$02\$00\$ff\$ff\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$02\$ff\$cc\$00\$00\$00\$00\$11\$01\$06\$00\$11\$00\$06\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$00\$ee\$00\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$00\$00\$ff\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$cc\$00\$ff\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$00\$ff\$ff\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$ff\$cc\$00\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$cc\$00\$ff\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$02\$00\$ff\$ff\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$00\$12\$02\$02\$6b\$00\$01\$10\$00\
+\$11\$01\$02\$07\$07\$04\$ff\$ff\$00\$00\$00\$00\$07\$03\$ff\$ff\
+\$00\$00\$00\$00\$07\$02\$ff\$ff\$00\$00\$00\$00\$07\$01\$ff\$ff\
+\$00\$00\$00\$00\$07\$00\$ff\$ff\$00\$00\$00\$00\$11\$00\$02\$07\
+\$11\$01\$02\$01\$07\$04\$00\$00\$00\$00\$00\$00\$07\$03\$00\$00\
+\$00\$00\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\$07\$01\$00\$00\
+\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$06\$07\$04\$ff\$ff\
+\$00\$00\$00\$00\$07\$03\$ff\$ff\$00\$00\$00\$00\$07\$02\$ff\$ff\
+\$00\$00\$00\$00\$07\$01\$ff\$ff\$00\$00\$00\$00\$07\$00\$ff\$ff\
+\$00\$00\$00\$00\$11\$00\$02\$07\$11\$01\$02\$01\$07\$04\$00\$00\
+\$00\$00\$00\$00\$07\$03\$00\$00\$00\$00\$00\$00\$07\$02\$00\$00\
+\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\
+\$00\$00\$00\$06\$07\$04\$ff\$ff\$00\$00\$00\$00\$07\$03\$ff\$ff\
+\$00\$00\$00\$00\$07\$02\$ff\$ff\$00\$00\$00\$00\$07\$01\$ff\$ff\
+\$00\$00\$00\$00\$07\$00\$ff\$ff\$00\$00\$00\$00\$11\$00\$02\$07\
+\$11\$01\$03\$01\$07\$04\$00\$00\$00\$00\$00\$00\$07\$03\$00\$00\
+\$00\$00\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\$07\$01\$00\$00\
+\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$06\$07\$04\$ff\$ff\
+\$00\$00\$00\$00\$07\$03\$ff\$ff\$00\$00\$00\$00\$07\$02\$ff\$ff\
+\$00\$00\$00\$00\$07\$01\$ff\$ff\$00\$00\$00\$00\$07\$00\$ff\$ff\
+\$00\$00\$00\$00\$11\$00\$03\$07\$11\$01\$02\$01\$07\$04\$00\$00\
+\$00\$00\$00\$00\$07\$03\$00\$00\$00\$00\$00\$00\$07\$02\$00\$00\
+\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\
+\$00\$00\$00\$06\$07\$04\$ff\$ff\$00\$00\$00\$00\$07\$03\$ff\$ff\
+\$00\$00\$00\$00\$07\$02\$ff\$ff\$00\$00\$00\$00\$07\$01\$ff\$ff\
+\$00\$00\$00\$00\$07\$00\$ff\$ff\$00\$00\$00\$00\$11\$00\$02\$07\
+\$11\$01\$04\$01\$07\$04\$00\$00\$00\$00\$00\$00\$07\$03\$00\$00\
+\$00\$00\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\$07\$01\$00\$00\
+\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\$00\$06\$07\$04\$ff\$ff\
+\$00\$00\$00\$00\$07\$03\$ff\$ff\$00\$00\$00\$00\$07\$02\$ff\$ff\
+\$00\$00\$00\$00\$07\$01\$ff\$ff\$00\$00\$00\$00\$07\$00\$ff\$ff\
+\$00\$00\$00\$00\$11\$00\$04\$07\$11\$01\$02\$01\$07\$04\$00\$00\
+\$00\$00\$00\$00\$07\$03\$00\$00\$00\$00\$00\$00\$07\$02\$00\$00\
+\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\
+\$00\$00\$00\$06\$07\$04\$ff\$ff\$00\$00\$00\$00\$07\$03\$ff\$ff\
+\$00\$00\$00\$00\$07\$02\$ff\$ff\$00\$00\$00\$00\$07\$01\$ff\$ff\
+\$00\$00\$00\$00\$07\$00\$ff\$ff\$00\$00\$00\$00\$11\$00\$02\$08\
+\$07\$04\$00\$00\$00\$00\$00\$00\$07\$03\$00\$00\$00\$00\$00\$00\
+\$07\$02\$00\$00\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\$00\$00\
+\$07\$00\$00\$00\$00\$00\$00\$00\$12\$03\$01\$1b\$00\$01\$10\$00\
+\$07\$03\$ff\$00\$00\$00\$00\$00\$11\$01\$02\$07\$07\$01\$ff\$00\
+\$00\$00\$00\$00\$11\$00\$02\$01\$07\$03\$00\$00\$00\$00\$00\$06\
+\$07\$03\$ff\$00\$00\$00\$00\$00\$11\$01\$02\$01\$07\$01\$00\$00\
+\$00\$00\$00\$06\$07\$01\$ff\$00\$00\$00\$00\$00\$11\$00\$02\$01\
+\$07\$03\$00\$00\$00\$00\$00\$06\$07\$03\$ff\$00\$00\$00\$00\$00\
+\$11\$01\$02\$01\$07\$01\$00\$00\$00\$00\$00\$06\$07\$01\$ff\$00\
+\$00\$00\$00\$00\$11\$00\$02\$01\$07\$03\$00\$00\$00\$00\$00\$06\
+\$07\$03\$ff\$00\$00\$00\$00\$00\$11\$01\$03\$01\$07\$01\$00\$00\
+\$00\$00\$00\$06\$07\$01\$ff\$00\$00\$00\$00\$00\$11\$00\$03\$01\
+\$07\$03\$00\$00\$00\$00\$00\$06\$07\$03\$ff\$00\$00\$00\$00\$00\
+\$11\$01\$02\$01\$07\$01\$00\$00\$00\$00\$00\$06\$07\$01\$ff\$00\
+\$00\$00\$00\$00\$11\$00\$02\$01\$07\$03\$00\$00\$00\$00\$00\$06\
+\$07\$03\$ff\$00\$00\$00\$00\$00\$11\$01\$04\$01\$07\$01\$00\$00\
+\$00\$00\$00\$06\$07\$01\$ff\$00\$00\$00\$00\$00\$11\$00\$04\$01\
+\$07\$03\$00\$00\$00\$00\$00\$06\$07\$03\$ff\$00\$00\$00\$00\$00\
+\$11\$01\$02\$01\$07\$01\$00\$00\$00\$00\$00\$06\$07\$01\$ff\$00\
+\$00\$00\$00\$00\$11\$00\$02\$01\$07\$03\$00\$00\$00\$00\$00\$07\
+\$07\$01\$00\$00\$00\$00\$00\$00\$12\$04\$01\$03\$00\$01\$08\$00\
+\$11\$01\$04\$00\$11\$00\$04\$1e\$07\$03\$00\$ee\$00\$00\$00\$01\
+\$07\$03\$00\$00\$00\$00\$00\$01\$07\$02\$00\$ee\$00\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$01\$00\$ee\$00\$00\$00\$01\
+\$07\$01\$00\$00\$00\$00\$00\$01\$07\$02\$00\$ee\$00\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$03\$00\$ee\$00\$00\$00\$01\
+\$07\$03\$00\$00\$00\$00\$00\$01\$07\$02\$00\$ee\$00\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$01\$00\$ee\$00\$00\$00\$01\
+\$07\$01\$00\$00\$00\$00\$00\$01\$07\$02\$00\$ee\$00\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$03\$00\$ee\$00\$00\$00\$01\
+\$07\$03\$00\$00\$00\$00\$00\$01\$07\$02\$00\$ee\$00\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$01\$00\$ee\$00\$00\$00\$01\
+\$07\$01\$00\$00\$00\$00\$00\$01\$07\$02\$00\$ee\$00\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$03\$00\$ee\$00\$00\$00\$01\
+\$07\$03\$00\$00\$00\$00\$00\$01\$07\$02\$00\$ee\$00\$00\$00\$01\
+\$07\$02\$00\$00\$00\$00\$00\$01\$07\$01\$00\$ee\$00\$00\$00\$01\
+\$07\$01\$00\$00\$00\$00\$00\$00\$11\$01\$0d\$00\$11\$00\$0d\$00\
+\$12\$05\$01\$03\$00\$01\$08\$00\$11\$01\$04\$00\$11\$00\$04\$1e\
+\$07\$04\$ff\$00\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\$00\$01\
+\$07\$02\$ff\$00\$00\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$00\$ff\$00\$00\$00\$00\$01\$07\$00\$00\$00\$00\$00\$00\$01\
+\$07\$02\$ff\$00\$00\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$04\$ff\$00\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\$00\$01\
+\$07\$02\$ff\$00\$00\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$00\$ff\$00\$00\$00\$00\$01\$07\$00\$00\$00\$00\$00\$00\$01\
+\$07\$02\$ff\$00\$00\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$04\$ff\$00\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\$00\$01\
+\$07\$02\$ff\$00\$00\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$00\$ff\$00\$00\$00\$00\$01\$07\$00\$00\$00\$00\$00\$00\$01\
+\$07\$02\$ff\$00\$00\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$04\$ff\$00\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\$00\$01\
+\$07\$02\$ff\$00\$00\$00\$00\$01\$07\$02\$00\$00\$00\$00\$00\$01\
+\$07\$00\$ff\$00\$00\$00\$00\$01\$07\$00\$00\$00\$00\$00\$00\$00\
+\$11\$01\$0d\$00\$11\$00\$0d\$01\$13\$00\$01\$0a\$00\$10\$00\$01\
+\$04\$01\$07\$04\$00\$33\$ff\$00\$00\$00\$07\$02\$ff\$00\$00\$00\
+\$00\$00\$07\$00\$ff\$ff\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\
+\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\
+\$00\$00\$07\$01\$ff\$ff\$00\$00\$00\$01\$07\$01\$00\$00\$00\$00\
+\$00\$00\$07\$04\$ff\$ff\$00\$00\$00\$00\$07\$02\$00\$ee\$00\$00\
+\$00\$00\$07\$00\$ff\$00\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\
+\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\
+\$00\$00\$07\$03\$00\$ee\$00\$00\$00\$01\$07\$03\$00\$00\$00\$00\
+\$00\$00\$07\$04\$ee\$00\$00\$00\$00\$00\$07\$01\$00\$33\$ff\$00\
+\$00\$01\$07\$04\$00\$00\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\
+\$00\$00\$07\$04\$ff\$00\$00\$00\$00\$00\$07\$00\$ff\$ff\$00\$00\
+\$00\$01\$07\$04\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\
+\$00\$00\$07\$03\$00\$33\$ff\$00\$00\$01\$07\$03\$00\$00\$00\$00\
+\$00\$00\$07\$02\$ff\$ff\$00\$00\$00\$00\$07\$00\$ff\$00\$00\$00\
+\$00\$01\$07\$02\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\
+\$00\$01\$07\$03\$ee\$00\$00\$00\$00\$00\$07\$00\$00\$ee\$00\$00\
+\$00\$01\$07\$03\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\
+\$00\$00\$07\$03\$ff\$00\$00\$00\$00\$00\$07\$02\$00\$ee\$00\$00\
+\$00\$01\$07\$03\$00\$00\$00\$00\$00\$00\$07\$02\$00\$00\$00\$00\
+\$00\$00\$07\$01\$00\$33\$ff\$00\$00\$01\$07\$01\$00\$00\$00\$00\
+\$00\$01\$07\$04\$00\$33\$ff\$00\$00\$00\$07\$02\$ff\$00\$00\$00\
+\$00\$00\$07\$00\$ff\$ff\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\
+\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\
+\$00\$00\$07\$01\$ff\$ff\$00\$00\$00\$01\$07\$01\$00\$00\$00\$00\
+\$00\$00\$07\$04\$ff\$ff\$00\$00\$00\$00\$07\$02\$00\$ee\$00\$00\
+\$00\$00\$07\$00\$ff\$00\$00\$00\$00\$01\$07\$04\$00\$00\$00\$00\
+\$00\$00\$07\$02\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\
+\$00\$00\$07\$03\$00\$ee\$00\$00\$00\$01\$07\$03\$00\$00\$00\$00\
+\$00\$00\$07\$04\$ee\$00\$00\$00\$00\$00\$07\$01\$00\$33\$ff\$00\
+\$00\$01\$07\$04\$00\$00\$00\$00\$00\$00\$07\$01\$00\$00\$00\$00\
+\$00\$00\$07\$04\$ff\$00\$00\$00\$00\$00\$07\$00\$ff\$ff\$00\$00\
+\$00\$01\$07\$04\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\
+\$00\$00\$07\$03\$00\$33\$ff\$00\$00\$01\$07\$03\$00\$00\$00\$00\
+\$00\$00\$07\$02\$ff\$ff\$00\$00\$00\$00\$07\$00\$ff\$00\$00\$00\
+\$00\$01\$07\$02\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\
+\$00\$01\$07\$03\$ee\$00\$00\$00\$00\$00\$07\$00\$00\$ee\$00\$00\
+\$00\$01\$07\$03\$00\$00\$00\$00\$00\$00\$07\$00\$00\$00\$00\$00\
+\$00\$00\$07\$03\$ff\$00\$00\$00\$00\$00\$07\$02\$00\$ee\$00\$00\
+\$00\$01\$07\$03\$00\$00\$00\$00\$00\$00\$07\$02\$00\$00\$00\$00\
+\$00\$00\$07\$01\$00\$33\$ff\$00\$00\$01\$07\$01\$00\$00\$00\$00\
+\$00\$01\$13\$00\$00\$00\$00";;
+
+var chorstream=
+"\$00\$04\$ff\$66\$00\$00\$03\$ff\$ff\$00\$00\$01\$ff\$ff\$00\$00\$00\$ff\$00\$00\$01\$03\$00\$00\$00\$00\$01\$00\$00\$00\$00\$02\
+\$ff\$ff\$00\$01\$02\$00\$00\$00\$01\$00\$00\$00\$00\$01\$03\$ff\$ff\$00\$01\$04\$00\$00\$00\$00\$03\$00\$00\$00\$00\$02\$ff\$ff\
+\$00\$00\$00\$ff\$00\$00\$01\$02\$00\$00\$00\$00\$01\$ff\$ff\$00\$01\$01\$00\$00\$00\$00\$04\$ff\$66\$00\$01\$00\$00\$00\$00\$01\
+\$03\$ff\$ff\$00\$01\$03\$00\$00\$00\$00\$02\$ff\$ff\$00\$00\$00\$ff\$00\$00\$01\$02\$00\$00\$00\$00\$01\$ff\$ff\$00\$01\$04\$00\
+\$00\$00\$00\$01\$00\$00\$00\$01\$00\$00\$00\$00\$01\$04\$ff\$66\$00\$00\$01\$ff\$ff\$00\$01\$01\$00\$00\$00\$00\$02\$ff\$ff\$00\
+\$00\$00\$ff\$00\$00\$01\$02\$00\$00\$00\$00\$03\$ff\$ff\$00\$01\$03\$00\$00\$00\$01\$00\$00\$00\$00\$01\$04\$00\$00\$00\$00\$02\
+\$ff\$ff\$00\$01\$02\$00\$00\$00\$00\$03\$ff\$ff\$00\$00\$01\$ff\$ff\$00\$00\$00\$ff\$00\$00\$01\$03\$00\$00\$00\$00\$01\$00\$00\
+\$00\$00\$04\$ff\$66\$00\$00\$02\$ff\$ff\$00\$01\$02\$00\$00\$00\$01\$00\$00\$00\$00\$01\$03\$ff\$ff\$00\$00\$02\$ff\$ff\$00\$00\
+\$01\$ff\$ff\$00\$01\$03\$00\$00\$00\$00\$02\$00\$00\$00\$00\$01\$00\$00\$00\$00\$00\$ff\$00\$00\$01\$04\$00\$00\$00\$02\$00\$00\
+\$00\$00\$00\$04\$ff\$66\$00\$02\$00\$ff\$00\$00\$01\$03\$ff\$ff\$00\$00\$01\$ff\$ff\$00\$01\$03\$00\$00\$00\$00\$01\$00\$00\$00\
+\$00\$02\$ff\$ff\$00\$01\$04\$00\$00\$00\$00\$02\$00\$00\$00\$00\$00\$00\$00\$00\$02\$04\$ff\$66\$00\$00\$03\$ff\$ff\$00\$00\$00\
+\$ff\$00\$00\$01\$03\$00\$00\$00\$00\$02\$ff\$ff\$00\$01\$02\$00\$00\$00\$00\$01\$ff\$ff\$00\$01\$01\$00\$00\$00\$00\$00\$00\$00\
+\$00\$02\$04\$00\$00\$00\$00\$01\$ff\$ff\$00\$00\$00\$ff\$00\$00\$01\$01\$00\$00\$00\$00\$02\$ff\$ff\$00\$01\$02\$00\$00\$00\$00\
+\$04\$ff\$66\$00\$00\$03\$ff\$ff\$00\$01\$04\$00\$00\$00\$00\$03\$00\$00\$00\$00\$00\$00\$00\$00\$1e\$04\$ff\$ff\$00\$00\$03\$ff\
+\$00\$00\$00\$01\$ff\$00\$00\$00\$00\$ff\$ff\$ff\$01\$03\$00\$00\$00\$00\$01\$00\$00\$00\$00\$02\$ff\$00\$00\$01\$02\$00\$00\$00\
+\$01\$00\$00\$00\$00\$01\$03\$ff\$00\$00\$01\$03\$00\$00\$00\$00\$02\$ff\$00\$00\$00\$00\$ff\$ff\$ff\$01\$02\$00\$00\$00\$00\$01\
+\$ff\$00\$00\$01\$04\$00\$00\$00\$00\$01\$00\$00\$00\$01\$00\$00\$00\$00\$01\$04\$ff\$ff\$00\$01\$00\$ff\$ff\$ff\$03\$00\$00\$00\
+\$00\$01\$01\$ff\$00\$00\$01\$01\$00\$00\$00\$00\$02\$ff\$00\$00\$00\$00\$ff\$ff\$ff\$01\$04\$00\$00\$00\$00\$02\$00\$00\$00\$00\
+\$03\$ff\$00\$00\$01\$03\$00\$00\$00\$01\$00\$00\$00\$00\$01\$02\$ff\$00\$00\$01\$02\$00\$00\$00\$00\$03\$ff\$00\$00\$00\$01\$ff\
+\$00\$00\$00\$00\$ff\$ff\$ff\$01\$03\$00\$00\$00\$00\$01\$00\$00\$00\$00\$02\$ff\$00\$00\$01\$02\$00\$00\$00\$01\$00\$00\$00\$00\
+\$01\$03\$ff\$00\$00\$00\$02\$ff\$00\$00\$00\$01\$ff\$00\$00\$01\$03\$00\$00\$00\$00\$02\$00\$00\$00\$00\$01\$00\$00\$00\$00\$00\
+\$ff\$ff\$ff\$02\$04\$ff\$ff\$00\$00\$03\$ff\$00\$00\$00\$01\$ff\$00\$00\$01\$03\$00\$00\$00\$00\$01\$00\$00\$00\$00\$00\$00\$00\
+\$00\$00\$02\$ff\$00\$00\$01\$02\$00\$00\$00\$01\$00\$ff\$ff\$ff\$03\$00\$00\$00\$00\$01\$04\$00\$00\$00\$01\$03\$ff\$00\$00\$00\
+\$00\$ff\$ff\$ff\$01\$03\$00\$00\$00\$00\$04\$ff\$ff\$00\$00\$02\$ff\$00\$00\$01\$02\$00\$00\$00\$00\$01\$ff\$00\$00\$01\$01\$00\
+\$00\$00\$00\$00\$00\$00\$00\$02\$01\$ff\$00\$00\$00\$00\$ff\$ff\$ff\$01\$01\$00\$00\$00\$00\$02\$ff\$00\$00\$01\$02\$00\$00\$00\
+\$00\$03\$ff\$00\$00\$01\$04\$00\$00\$00\$00\$03\$00\$00\$00\$00\$00\$00\$00\$00\$02\$00\$00\$00\$00\$00\$01\$00\$00\$00\$00\$02\
+\$00\$00\$00\$00\$03\$00\$00\$00\$00\$04\$00\$00\$00"::
+"\$00\$04\$ff\$ff\$00\$00\$03\$ff\$00\$00\$00\$01\$ff\$00\$00\$00\$00\$ff\$ff\$ff\$01\$03\$00\$00\$00\$00\$01\$00\$00\$00\$00\$02\
+\$ff\$00\$00\$01\$02\$00\$00\$00\$01\$00\$00\$00\$00\$01\$03\$ff\$00\$00\$01\$03\$00\$00\$00\$00\$02\$ff\$00\$00\$00\$00\$ff\$ff\
+\$ff\$01\$02\$00\$00\$00\$00\$01\$ff\$00\$00\$01\$04\$00\$00\$00\$00\$01\$00\$00\$00\$01\$00\$00\$00\$00\$01\$04\$ff\$ff\$00\$01\
+\$00\$ff\$ff\$ff\$03\$00\$00\$00\$00\$01\$01\$ff\$00\$00\$01\$01\$00\$00\$00\$00\$02\$ff\$00\$00\$00\$00\$ff\$ff\$ff\$01\$04\$00\
+\$00\$00\$00\$02\$00\$00\$00\$00\$03\$ff\$00\$00\$01\$03\$00\$00\$00\$01\$00\$00\$00\$00\$01\$02\$ff\$00\$00\$01\$02\$00\$00\$00\
+\$00\$03\$ff\$00\$00\$00\$01\$ff\$00\$00\$00\$00\$ff\$ff\$ff\$01\$03\$00\$00\$00\$00\$01\$00\$00\$00\$00\$02\$ff\$00\$00\$01\$02\
+\$00\$00\$00\$01\$00\$00\$00\$00\$01\$03\$ff\$00\$00\$00\$02\$ff\$00\$00\$00\$01\$ff\$00\$00\$01\$03\$00\$00\$00\$00\$02\$00\$00\
+\$00\$00\$01\$00\$00\$00\$00\$00\$ff\$ff\$ff\$02\$04\$ff\$ff\$00\$00\$03\$ff\$00\$00\$00\$01\$ff\$00\$00\$01\$03\$00\$00\$00\$00\
+\$01\$00\$00\$00\$00\$00\$00\$00\$00\$00\$02\$ff\$00\$00\$01\$02\$00\$00\$00\$01\$00\$ff\$ff\$ff\$03\$00\$00\$00\$00\$01\$04\$00\
+\$00\$00\$01\$03\$ff\$00\$00\$00\$00\$ff\$ff\$ff\$01\$03\$00\$00\$00\$00\$04\$ff\$ff\$00\$00\$02\$ff\$00\$00\$01\$02\$00\$00\$00\
+\$00\$01\$ff\$00\$00\$01\$01\$00\$00\$00\$00\$00\$00\$00\$00\$02\$01\$ff\$00\$00\$00\$00\$ff\$ff\$ff\$01\$01\$00\$00\$00\$00\$02\
+\$ff\$00\$00\$01\$02\$00\$00\$00\$00\$03\$ff\$00\$00\$01\$04\$00\$00\$00\$00\$03\$00\$00\$00\$00\$00\$00\$00\$00\$06\$04\$ff\$00\
+\$00\$00\$03\$ff\$ff\$ff\$00\$01\$ff\$ff\$ff\$00\$00\$ff\$ff\$00\$01\$02\$ff\$ff\$ff\$01\$00\$00\$00\$00\$01\$03\$00\$00\$00\$00\
+\$01\$00\$00\$00\$01\$02\$00\$00\$00\$01\$03\$ff\$ff\$ff\$01\$04\$00\$00\$00\$00\$02\$ff\$ff\$ff\$00\$00\$ff\$ff\$00\$01\$01\$ff\
+\$ff\$ff\$01\$03\$00\$00\$00\$00\$00\$00\$00\$00\$01\$02\$00\$00\$00\$01\$01\$00\$00\$00\$00\$04\$ff\$00\$00\$02\$00\$ff\$ff\$00\
+\$01\$01\$ff\$ff\$ff\$01\$00\$00\$00\$00\$00\$02\$ff\$ff\$ff\$01\$03\$ff\$ff\$ff\$01\$01\$00\$00\$00\$01\$04\$00\$00\$00\$00\$02\
+\$00\$00\$00\$01\$03\$00\$00\$00\$00\$00\$ff\$ff\$00\$01\$02\$ff\$ff\$ff\$01\$00\$00\$00\$00\$00\$03\$ff\$ff\$ff\$00\$01\$ff\$ff\
+\$ff\$01\$04\$ff\$00\$00\$01\$02\$00\$00\$00\$01\$02\$ff\$ff\$ff\$01\$00\$ff\$ff\$00\$01\$03\$00\$00\$00\$00\$01\$00\$00\$00\$01\
+\$02\$00\$00\$00\$00\$00\$00\$00\$00\$02\$04\$00\$00\$00\$02\$03\$ff\$ff\$ff\$00\$02\$ff\$ff\$ff\$00\$01\$ff\$ff\$ff\$00\$00\$ff\
+\$ff\$00\$01\$04\$ff\$00\$00\$01\$00\$00\$00\$00\$01\$03\$00\$00\$00\$00\$02\$00\$00\$00\$00\$01\$00\$00\$00\$03\$00\$ff\$ff\$00\
+\$02\$04\$00\$00\$00\$00\$00\$00\$00\$00\$00\$01\$ff\$ff\$ff\$01\$02\$ff\$ff\$ff\$01\$03\$ff\$ff\$ff\$01\$01\$00\$00\$00\$01\$02\
+\$00\$00\$00\$00\$00\$ff\$ff\$00\$01\$03\$00\$00\$00\$01\$00\$00\$00\$00\$01\$03\$ff\$ff\$ff\$01\$02\$ff\$ff\$ff\$01\$01\$ff\$ff\
+\$ff\$01\$03\$00\$00\$00\$00\$00\$ff\$ff\$00\$01\$02\$00\$00\$00\$01\$01\$00\$00\$00\$00\$00\$00\$00\$00\$00\$04\$ff\$00\$00\$03\
+\$03\$ff\$ff\$ff\$00\$01\$ff\$ff\$ff\$01\$02\$ff\$ff\$ff\$00\$00\$ff\$ff\$00\$02\$03\$00\$00\$00\$00\$01\$00\$00\$00\$00\$00\$00\
+\$00\$00\$01\$04\$00\$00\$00\$00\$02\$00\$00\$00\$03\$00\$ff\$ff\$00\$01\$04\$ff\$00\$00\$00\$03\$ff\$ff\$ff\$00\$01\$ff\$ff\$ff\
+\$01\$00\$00\$00\$00\$00\$02\$ff\$ff\$ff\$02\$03\$00\$00\$00\$00\$01\$00\$00\$00\$01\$02\$00\$00\$00\$01\$00\$ff\$ff\$00\$02\$04\
+\$00\$00\$00\$00\$00\$00\$00\$00\$04\$00\$00\$00\$00\$00\$01\$00\$00\$00\$00\$02\$00\$00\$00\$00\$03\$00\$00\$00\$00\$04\$00\$00\
+\$00"::
+"\$00\$04\$ff\$00\$00\$00\$03\$ff\$ff\$ff\$00\$01\$ff\$ff\$ff\$00\$00\$ff\$ff\$00\$01\$02\$ff\$ff\$ff\$01\$00\$00\$00\$00\$01\$03\
+\$00\$00\$00\$00\$01\$00\$00\$00\$01\$02\$00\$00\$00\$01\$03\$ff\$ff\$ff\$01\$04\$00\$00\$00\$00\$02\$ff\$ff\$ff\$00\$00\$ff\$ff\
+\$00\$01\$01\$ff\$ff\$ff\$01\$03\$00\$00\$00\$00\$00\$00\$00\$00\$01\$02\$00\$00\$00\$01\$01\$00\$00\$00\$00\$04\$ff\$00\$00\$02\
+\$04\$00\$00\$00\$42\$04\$ff\$cc\$00\$00\$01\$ff\$cc\$00\$00\$00\$ff\$00\$00\$01\$02\$ff\$cc\$00\$01\$04\$00\$00\$00\$00\$03\$ff\
+\$cc\$00\$02\$01\$00\$00\$00\$00\$04\$ff\$cc\$00\$01\$02\$00\$00\$00\$00\$00\$00\$00\$00\$01\$04\$00\$00\$00\$00\$03\$00\$00\$00\
+\$01\$00\$ff\$00\$00\$01\$04\$ff\$cc\$00\$00\$03\$ff\$cc\$00\$01\$02\$ff\$cc\$00\$01\$04\$00\$00\$00\$00\$01\$ff\$cc\$00\$01\$03\
+\$00\$00\$00\$01\$02\$00\$00\$00\$00\$00\$00\$00\$00\$01\$01\$00\$00\$00\$01\$00\$ff\$00\$00\$01\$01\$ff\$cc\$00\$01\$04\$ff\$cc\
+\$00\$00\$02\$ff\$cc\$00\$01\$03\$ff\$cc\$00\$01\$04\$00\$00\$00\$01\$01\$00\$00\$00\$00\$00\$00\$00\$00\$01\$02\$00\$00\$00\$00\
+\$04\$ff\$cc\$00\$01\$03\$00\$00\$00\$00\$00\$ff\$00\$00\$01\$04\$00\$00\$00\$01\$03\$ff\$cc\$00\$01\$04\$ff\$cc\$00\$00\$02\$ff\
+\$cc\$00\$01\$01\$ff\$cc\$00\$01\$04\$00\$00\$00\$00\$03\$00\$00\$00\$00\$00\$00\$00\$00\$01\$02\$00\$00\$00\$01\$01\$00\$00\$00\
+\$00\$00\$ff\$00\$00\$04\$04\$ff\$cc\$00\$00\$03\$ff\$cc\$00\$00\$01\$ff\$cc\$00\$01\$00\$00\$00\$00\$00\$02\$ff\$cc\$00\$01\$04\
+\$00\$00\$00\$01\$03\$00\$00\$00\$00\$01\$00\$00\$00\$00\$00\$ff\$00\$00\$01\$02\$00\$00\$00\$00\$04\$ff\$cc\$00\$01\$03\$ff\$cc\
+\$00\$00\$01\$ff\$cc\$00\$01\$04\$00\$00\$00\$00\$02\$ff\$cc\$00\$02\$03\$00\$00\$00\$00\$01\$00\$00\$00\$00\$00\$00\$00\$00\$00\
+\$04\$ff\$cc\$00\$01\$02\$00\$00\$00\$01\$04\$00\$00\$00\$00\$03\$ff\$cc\$00\$00\$01\$ff\$cc\$00\$00\$00\$ff\$00\$00\$01\$02\$ff\
+\$cc\$00\$02\$03\$00\$00\$00\$00\$01\$00\$00\$00\$01\$02\$00\$00\$00\$01\$00\$00\$00\$00\$00\$03\$ff\$cc\$00\$00\$01\$ff\$cc\$00\
+\$01\$04\$ff\$cc\$00\$00\$02\$ff\$cc\$00\$01\$00\$ff\$00\$00\$01\$04\$00\$00\$00\$00\$03\$00\$00\$00\$00\$01\$00\$00\$00\$01\$02\
+\$00\$00\$00\$01\$04\$ff\$cc\$00\$00\$03\$ff\$cc\$00\$00\$01\$ff\$cc\$00\$01\$02\$ff\$cc\$00\$01\$04\$00\$00\$00\$00\$00\$00\$00\
+\$00\$01\$03\$00\$00\$00\$00\$01\$00\$00\$00\$01\$02\$00\$00\$00\$00\$04\$ff\$cc\$00\$00\$00\$ff\$00\$00\$01\$03\$ff\$cc\$00\$00\
+\$01\$ff\$cc\$00\$01\$04\$00\$00\$00\$00\$02\$ff\$cc\$00\$02\$03\$00\$00\$00\$00\$01\$00\$00\$00\$01\$02\$00\$00\$00\$00\$00\$00\
+\$00\$00\$02\$00\$00\$00\$00\$00\$01\$00\$00\$00\$00\$02\$00\$00\$00\$00\$03\$00\$00\$00\$00\$04\$00\$00\$00"::
+"\$00\$04\$ff\$cc\$00\$00\$01\$ff\$cc\$00\$00\$00\$ff\$00\$00\$01\$02\$ff\$cc\$00\$01\$04\$00\$00\$00\$00\$03\$ff\$cc\$00\$02\$01\
+\$00\$00\$00\$00\$04\$ff\$cc\$00\$01\$02\$00\$00\$00\$00\$00\$00\$00\$00\$01\$04\$00\$00\$00\$00\$03\$00\$00\$00\$01\$00\$ff\$00\
+\$00\$01\$04\$ff\$cc\$00\$00\$03\$ff\$cc\$00\$01\$02\$ff\$cc\$00\$01\$04\$00\$00\$00\$00\$01\$ff\$cc\$00\$01\$03\$00\$00\$00\$01\
+\$02\$00\$00\$00\$00\$00\$00\$00\$00\$01\$01\$00\$00\$00\$01\$00\$ff\$00\$00\$01\$01\$ff\$cc\$00\$01\$04\$ff\$cc\$00\$00\$02\$ff\
+\$cc\$00\$01\$03\$ff\$cc\$00\$01\$04\$00\$00\$00\$01\$01\$00\$00\$00\$00\$00\$00\$00\$00\$01\$02\$00\$00\$00\$00\$04\$ff\$cc\$00\
+\$01\$03\$00\$00\$00\$00\$00\$ff\$00\$00\$01\$04\$00\$00\$00\$01\$03\$ff\$cc\$00\$01\$04\$ff\$cc\$00\$00\$02\$ff\$cc\$00\$01\$01\
+\$ff\$cc\$00\$01\$04\$00\$00\$00\$00\$03\$00\$00\$00\$00\$00\$00\$00\$00\$01\$02\$00\$00\$00\$01\$01\$00\$00\$00\$00\$00\$ff\$00\
+\$00\$04\$04\$ff\$cc\$00\$00\$03\$ff\$cc\$00\$00\$01\$ff\$cc\$00\$01\$00\$00\$00\$00\$00\$02\$ff\$cc\$00\$01\$04\$00\$00\$00\$01\
+\$03\$00\$00\$00\$00\$01\$00\$00\$00\$00\$00\$ff\$00\$00\$01\$02\$00\$00\$00\$00\$04\$ff\$cc\$00\$01\$03\$ff\$cc\$00\$00\$01\$ff\
+\$cc\$00\$01\$04\$00\$00\$00\$00\$02\$ff\$cc\$00\$02\$03\$00\$00\$00\$00\$01\$00\$00\$00\$00\$00\$00\$00\$00\$00\$04\$ff\$cc\$00\
+\$01\$02\$00\$00\$00\$01\$04\$00\$00\$00\$00\$03\$ff\$cc\$00\$00\$01\$ff\$cc\$00\$00\$00\$ff\$00\$00\$01\$02\$ff\$cc\$00\$02\$03\
+\$00\$00\$00\$00\$01\$00\$00\$00\$01\$02\$00\$00\$00\$01\$00\$00\$00\$00\$00\$03\$ff\$cc\$00\$00\$01\$ff\$cc\$00\$01\$04\$ff\$cc\
+\$00\$00\$02\$ff\$cc\$00\$01\$00\$ff\$00\$00\$01\$04\$00\$00\$00\$00\$03\$00\$00\$00\$00\$01\$00\$00\$00\$01\$02\$00\$00\$00\$01\
+\$04\$ff\$cc\$00\$00\$03\$ff\$cc\$00\$00\$01\$ff\$cc\$00\$01\$02\$ff\$cc\$00\$01\$04\$00\$00\$00\$00\$00\$00\$00\$00\$01\$03\$00\
+\$00\$00\$00\$01\$00\$00\$00\$01\$02\$00\$00\$00\$00\$04\$ff\$cc\$00\$00\$00\$ff\$00\$00\$01\$03\$ff\$cc\$00\$00\$01\$ff\$cc\$00\
+\$01\$04\$00\$00\$00\$00\$02\$ff\$cc\$00\$02\$03\$00\$00\$00\$00\$01\$00\$00\$00\$01\$02\$00\$00\$00\$00\$00\$00\$00\$00\$02\$00\
+\$00\$00\$00\$00\$01\$00\$00\$00\$00\$02\$00\$00\$00\$00\$03\$00\$00\$00\$00\$04\$00\$00\$00"::
+nil;;
+
+var midi_1noteA4=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$2a\$00\$ff\$03\$07\$31\$6e\$6f\$74\$65\$41\
+\$35\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\$02\$18\$08\
+\$00\$c0\$09\$14\$90\$51\$78\$82\$4a\$80\$51\$49\$00\$ff\$2f\$00";;
+var midi_1noteB5=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$2a\$00\$ff\$03\$07\$31\$6e\$6f\$74\$65\$42\
+\$35\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\$02\$18\$08\
+\$00\$c0\$09\$0a\$90\$5f\$76\$82\$5d\$80\$5f\$4d\$00\$ff\$2f\$00";;
+var midi_1noteBb4=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$2b\$00\$ff\$03\$08\$31\$6e\$6f\$74\$65\$42\
+\$62\$34\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\$02\$18\
+\$08\$00\$c0\$09\$14\$90\$52\$64\$82\$7a\$80\$52\$49\$00\$ff\$2f\
+\$00";;
+var midi_1noteC5=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$2a\$00\$ff\$03\$07\$31\$6e\$6f\$74\$65\$43\
+\$36\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\$02\$18\$08\
+\$00\$c0\$09\$0d\$90\$54\$7a\$83\$39\$80\$54\$76\$00\$ff\$2f\$00";;
+var midi_1noteE4=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$29\$00\$ff\$03\$06\$4e\$6f\$74\$65\$31\$41\
+\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\$02\$18\$08\$00\
+\$c0\$09\$11\$90\$4c\$7f\$82\$56\$80\$4c\$76\$00\$ff\$2f\$00";;
+var midi_1noteF4=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$2b\$00\$ff\$03\$08\$31\$6e\$6f\$74\$65\$46\
+\$23\$34\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\$02\$18\
+\$08\$00\$c0\$09\$12\$90\$4e\$6e\$82\$46\$80\$4e\$49\$00\$ff\$2f\
+\$00";;
+var midi_1noteF5=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$2a\$00\$ff\$03\$07\$31\$6e\$6f\$74\$65\$46\
+\$35\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\$02\$18\$08\
+\$00\$c0\$09\$12\$90\$59\$70\$81\$7f\$80\$59\$49\$00\$ff\$2f\$00";;
+var midi_1noteG5=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$2a\$00\$ff\$03\$07\$31\$6e\$6f\$74\$65\$47\
+\$35\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\$02\$18\$08\
+\$00\$c0\$09\$0f\$90\$5b\$7b\$82\$20\$80\$5b\$4d\$00\$ff\$2f\$00";;
+var midi_2notesC6C4=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$34\$00\$ff\$03\$0a\$32\$6e\$6f\$74\$65\$73\
+\$43\$36\$43\$34\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\
+\$02\$18\$08\$00\$c0\$09\$11\$90\$60\$63\$81\$06\$48\$53\$82\$0a\
+\$80\$60\$4d\$5e\$48\$76\$00\$ff\$2f\$00";;
+var midi_2notesC6F5=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$34\$00\$ff\$03\$0b\$32\$6e\$6f\$74\$65\$73\
+\$43\$36\$46\$23\$35\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\
+\$04\$02\$18\$08\$00\$c0\$09\$14\$90\$60\$5d\$38\$5a\$67\$02\$80\
+\$60\$6a\$81\$23\$5a\$6f\$00\$ff\$2f\$00";;
+var midi_2notesD4A5=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$33\$00\$ff\$03\$0a\$32\$6e\$6f\$74\$65\$73\
+\$44\$34\$41\$35\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\
+\$02\$18\$08\$00\$c0\$09\$45\$90\$4a\$5b\$81\$70\$5d\$69\$06\$80\
+\$4a\$49\$78\$5d\$52\$00\$ff\$2f\$00";;
+var midi_2notesD4G4=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$36\$00\$ff\$03\$0a\$32\$6e\$6f\$74\$65\$73\
+\$44\$34\$47\$34\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\
+\$02\$18\$08\$00\$c0\$09\$15\$90\$4a\$62\$84\$15\$80\$4a\$49\$10\
+\$90\$4f\$71\$84\$33\$80\$4f\$76\$00\$ff\$2f\$00";;
+var midi_2notesD5G4=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$32\$00\$ff\$03\$0a\$32\$6e\$6f\$74\$65\$73\
+\$44\$35\$47\$34\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\
+\$02\$18\$08\$00\$c0\$09\$08\$90\$56\$5f\$3d\$4f\$5a\$0e\$80\$56\
+\$78\$49\$4f\$6c\$00\$ff\$2f\$00";;
+var midi_2notesE5A5=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$33\$00\$ff\$03\$0a\$32\$6e\$6f\$74\$65\$73\
+\$41\$35\$45\$35\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\
+\$02\$18\$08\$00\$c0\$09\$14\$90\$58\$59\$81\$03\$5d\$58\$22\$80\
+\$58\$6f\$7f\$5d\$52\$00\$ff\$2f\$00";;
+var midi_2notesE5C6=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$32\$00\$ff\$03\$0a\$32\$6e\$6f\$74\$65\$73\
+\$45\$35\$43\$36\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\
+\$02\$18\$08\$00\$c0\$09\$02\$90\$58\$5a\$43\$60\$62\$08\$80\$58\
+\$78\$61\$60\$54\$00\$ff\$2f\$00";;
+var midi_2notesE5E4=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$33\$00\$ff\$03\$0a\$32\$6e\$6f\$74\$65\$73\
+\$45\$35\$45\$34\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\$04\$04\
+\$02\$18\$08\$00\$c0\$09\$02\$90\$58\$5a\$2c\$4c\$62\$1f\$80\$58\
+\$78\$83\$76\$4c\$49\$00\$ff\$2f\$00";;
+var midi_3notesA4G5G5=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$3c\$00\$ff\$03\$0c\$33\$6e\$6f\$74\$65\$73\
+\$41\$34\$47\$35\$47\$35\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\
+\$04\$04\$02\$18\$08\$00\$c0\$09\$11\$90\$51\$62\$6c\$5b\$52\$57\
+\$80\$5b\$6c\$54\$90\$5b\$62\$46\$80\$5b\$54\$56\$51\$49\$00\$ff\
+\$2f\$00";;
+var midi_3notesB5A5F5=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$3c\$00\$ff\$03\$0c\$33\$6e\$6f\$74\$65\$73\
+\$42\$35\$41\$35\$46\$35\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\
+\$04\$04\$02\$18\$08\$00\$c0\$09\$10\$90\$5f\$49\$27\$5d\$62\$13\
+\$80\$5f\$6a\$2b\$90\$59\$5a\$08\$80\$5d\$54\$44\$59\$78\$00\$ff\
+\$2f\$00";;
+var midi_3notesB5D5C6=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$3c\$00\$ff\$03\$0c\$33\$6e\$6f\$74\$65\$73\
+\$42\$35\$44\$35\$43\$36\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\
+\$04\$04\$02\$18\$08\$00\$c0\$09\$14\$90\$5f\$62\$28\$56\$52\$10\
+\$80\$5f\$54\$32\$90\$60\$5a\$15\$80\$56\$6c\$46\$60\$6a\$00\$ff\
+\$2f\$00";;
+var midi_3notesD4E4G4=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$3c\$00\$ff\$03\$0c\$33\$6e\$6f\$74\$65\$73\
+\$44\$34\$45\$34\$47\$34\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\
+\$04\$04\$02\$18\$08\$00\$c0\$09\$03\$90\$4a\$5a\$28\$4c\$52\$23\
+\$80\$4a\$78\$01\$90\$4f\$62\$33\$80\$4c\$6c\$13\$4f\$54\$00\$ff\
+\$2f\$00";;
+var midi_3notesE5A5C6=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$41\$00\$ff\$03\$0c\$33\$6e\$6f\$74\$65\$73\
+\$45\$35\$41\$35\$43\$36\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\
+\$04\$04\$02\$18\$08\$00\$c0\$09\$02\$90\$58\$5a\$4b\$80\$58\$78\
+\$81\$01\$90\$5d\$49\$3a\$80\$5d\$6a\$82\$22\$90\$60\$58\$81\$77\
+\$80\$60\$4d\$00\$ff\$2f\$00";;
+var midi_3notesE5C6D5=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$3d\$00\$ff\$03\$0c\$33\$6e\$6f\$74\$65\$73\
+\$45\$35\$43\$36\$44\$35\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\
+\$04\$04\$02\$18\$08\$00\$c0\$09\$02\$90\$58\$5a\$43\$60\$62\$08\
+\$80\$58\$78\$26\$90\$56\$48\$18\$80\$60\$54\$82\$3b\$56\$76\$00\
+\$ff\$2f\$00";;
+var midi_3notesE5D5A5=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$3e\$00\$ff\$03\$0c\$33\$6e\$6f\$74\$65\$73\
+\$45\$35\$44\$35\$41\$35\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\
+\$04\$04\$02\$18\$08\$00\$c0\$09\$0b\$90\$58\$40\$36\$56\$58\$6b\
+\$80\$58\$52\$54\$90\$5d\$48\$81\$72\$80\$56\$4d\$81\$5c\$5d\$76\
+\$00\$ff\$2f\$00";;
+var midi_3notesF5C6G5=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$3c\$00\$ff\$03\$0c\$33\$6e\$6f\$74\$65\$73\
+\$46\$35\$43\$36\$47\$35\$00\$ff\$51\$03\$10\$59\$42\$00\$ff\$58\
+\$04\$04\$02\$18\$08\$00\$c0\$09\$04\$90\$59\$5a\$41\$60\$62\$0a\
+\$80\$59\$78\$2f\$90\$5b\$52\$0d\$80\$60\$54\$4a\$5b\$6c\$00\$ff\
+\$2f\$00";;
+
+var midi_startrecord=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$03\$c0\$4d\$54\
+\$72\$6b\$00\$00\$00\$9f\$00\$c0\$11\$00\$b0\$0a\$40\$00\$b0\$65\
+\$00\$00\$b0\$64\$02\$00\$b0\$06\$40\$00\$b0\$65\$00\$00\$b0\$64\
+\$01\$00\$b0\$06\$40\$00\$b0\$26\$00\$00\$b0\$65\$00\$00\$b0\$64\
+\$00\$00\$b0\$06\$02\$00\$b0\$26\$00\$00\$ff\$51\$03\$09\$27\$c0\
+\$1e\$90\$4f\$7f\$00\$b0\$0b\$7f\$00\$e0\$00\$3f\$1e\$b0\$0b\$7a\
+\$00\$e0\$00\$40\$1e\$b0\$0b\$52\$1e\$b0\$0b\$69\$3c\$80\$4f\$7b\
+\$00\$90\$51\$7b\$00\$b0\$0b\$7f\$00\$e0\$00\$3b\$1e\$b0\$0b\$65\
+\$00\$e0\$00\$3c\$1e\$b0\$0b\$5d\$00\$e0\$00\$40\$1e\$e0\$00\$3d\
+\$3c\$80\$51\$5b\$1e\$b0\$0b\$7f\$00\$e0\$00\$3e\$1e\$b0\$0b\$5e\
+\$00\$e0\$00\$40\$1e\$b0\$0b\$34\$00\$90\$54\$7f\$83\$60\$80\$54\
+\$00\$00\$ff\$2f\$00";;
+var midi_endrecord=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$03\$c0\$4d\$54\
+\$72\$6b\$00\$00\$00\$75\$00\$c0\$11\$00\$e0\$00\$3f\$00\$e0\$00\
+\$40\$00\$e0\$00\$40\$00\$e0\$00\$3e\$00\$e0\$00\$3b\$00\$e0\$00\
+\$3c\$00\$e0\$00\$40\$00\$e0\$00\$3d\$00\$e0\$00\$3d\$00\$e0\$00\
+\$40\$00\$e0\$00\$3c\$00\$b0\$0b\$7f\$00\$e0\$00\$3b\$00\$b0\$0b\
+\$65\$00\$e0\$00\$3e\$00\$e0\$00\$40\$00\$e0\$00\$40\$00\$e0\$00\
+\$3f\$00\$b0\$0b\$7f\$00\$90\$54\$7f\$00\$ff\$51\$03\$07\$a1\$20\
+\$81\$70\$80\$54\$00\$00\$90\$51\$7f\$81\$70\$80\$51\$00\$00\$90\
+\$4d\$7f\$87\$40\$80\$4d\$00\$00\$ff\$2f\$00";;
+
+var midi_RFIDok=
+"\$4d\$54\$68\$64\$00\$00\$00\$06\$00\$00\$00\$01\$01\$e0\$4d\$54\
+\$72\$6b\$00\$00\$00\$3c\$00\$ff\$03\$06\$52\$46\$49\$44\$6f\$6b\
+\$00\$ff\$51\$03\$07\$a1\$20\$00\$ff\$58\$04\$04\$02\$18\$08\$00\
+\$c9\$00\$0c\$99\$47\$79\$03\$45\$7f\$02\$52\$79\$67\$89\$47\$00\
+\$04\$45\$00\$01\$52\$00\$24\$99\$18\$01\$47\$89\$18\$00\$00\$ff\
+\$2f\$00";;
+
+var midilist;;
+
+fun getmidilist=
+	if midilist==nil then set midilist=
+	{midi_1noteA4 midi_1noteB5 midi_1noteBb4 midi_1noteC5 midi_1noteE4 midi_1noteF4
+	 midi_1noteF5 midi_1noteG5 midi_2notesC6C4 midi_2notesC6F5 midi_2notesD4A5
+	 midi_2notesD4G4 midi_2notesD5G4 midi_2notesE5A5 midi_2notesE5C6 midi_2notesE5E4
+	 midi_3notesA4G5G5 midi_3notesB5A5F5 midi_3notesB5D5C6 midi_3notesD4E4G4 midi_3notesE5A5C6
+	 midi_3notesE5C6D5 midi_3notesE5D5A5 midi_3notesF5C6G5};
+	midilist;;
+
+fun controlsound s=
+	wavstartlocal s::nil;
+	0;;
+
+var buttonlast;;
+var buttontime;;
+var buttonevent;;
+var buttonclicn;;
+
+var BUTTON_CLIC=1;;
+var BUTTON_DCLIC=2;;
+var BUTTON_LCLIC=3;;
+var BUTTON_DLCLIC=4;;
+var T_DCLIC=500;;
+var T_LCLIC=1500;;
+
+var action=0;;
+
+fun buttonloop=
+	let button2 -> b in
+	if b!=buttonlast then
+	(
+		set buttonlast=b;
+		if b then
+		(
+			if buttontime==nil then
+			(
+				set buttonclicn=1;
+				set buttontime=time_ms
+			)
+			else
+			(
+				set buttonclicn=buttonclicn+1;
+				set buttontime=time_ms
+			)
+		)
+		else if buttontime!=nil then set buttontime=time_ms
+	)
+	else if (buttontime!=nil) then
+	(
+		if ((time_ms-buttontime)>=T_LCLIC) then
+		(
+			if buttonlast then set buttonevent=if buttonclicn==1 then BUTTON_LCLIC else BUTTON_DLCLIC;
+			set buttontime=nil
+		)
+		else if ((time_ms-buttontime)>=T_DCLIC)&&!buttonlast then
+		(
+			set buttonevent=if buttonclicn==1 then BUTTON_CLIC else BUTTON_DCLIC;
+			set buttontime=nil
+		)
+	);;
+
+fun buttongetevent=
+	let buttonevent -> ev in
+	(
+		set buttonevent=nil;
+		ev
+	);;
+
+proto loop 0;;
+fun buttoncheckevent=
+	buttonloop;
+	if buttonevent!=nil then loop;
+	0;;
+
+//var netMac="00904B8C540D";;
+fun _webmac key i=
+	if i<strlen key then (ctoh strget key i)::_webmac key i+1;;
+
+fun webmac key=strcatlist _webmac key 0;;
+
+fun configurl=strcatlist confGetServerUrl::"/locate.jsp?sn="::(webmac netMac)::"&h="::(itoa HARDWARE)::nil;;
+
+fun mktramenumber t= if t==MSG_IDLE then "7fffffff" else if t==MSG_ASLEEP then "7ffffffe" else itoh t;;
+
+fun pingurl=strcatlist pingsrv::"/vl/p4.php?sn="::(webmac netMac)::"&v="::(itoa FIRMWARE)::"&st=1&sd="::(itoh senddata)::
+"&tc="::(mktramenumber currenttrame)::"&h="::(itoa HARDWARE)::nil;;
+
+fun recordurl mode=strcatlist pingsrv::"/vl/record.jsp?sn="::(webmac netMac)::"&v="::(itoa FIRMWARE)::"&h="::(itoa HARDWARE)::"&m="::(itoa mode)::nil;;
+
+/*
+fun rfidurl tag=strcatlist pingsrv::"/vl/rfid.jsp?sn="::(webmac netMac)::"&v="::(itoa FIRMWARE)::"&h="::(itoa HARDWARE)::"&t="::(webmac tag)::nil;;
+*/
+
+fun rfidurl tag=strcatlist pingsrv::"/vl/p4.php?sn="::(webmac netMac)::"&v="::(itoa FIRMWARE)::"&h="::(itoa HARDWARE)::"&rf="::(webmac tag)::nil;;
+
+fun runinit=
+	set run=configstartRun;;
+
+
+fun filterconfig_word s=
+	let strstr s " " 0 -> i in
+	if i!=nil then [strsub s 0 i strsub s i+1 nil]
+	else [s nil];;
+
+fun filterconfig_line s i=
+	let strstr s "\10" i-> j in
+	if j!=nil then (filterconfig_word strsub s i j-i)::filterconfig_line s j+1
+	else if i<strlen s then (filterconfig_word strsub s i nil)::nil;;
+
+fun filterconfig s i0=
+	let strreplace s "\13" "" -> s in
+	filterconfig_line s i0;;
+
+//set msg=dumpconfig filterconfig val 1;
+
+fun dumpconfig l=
+	Secholn ">>>> dumpconfig :";
+	for l=l;l!=nil;tl l do let hd l->[key val] in
+	(
+		Secho key; Secho " = "; Secholn val
+	);
+	l;;
+
+fun _configcbhttp http res=
+	Secholn ">>>> _configcbhttp";
+	let filterconfig Secholn httpgetcontent res 0-> conf in
+	(
+		set pingsrv=listswitchstr conf "ping";
+		set broadcasturl=listswitchstr conf "broad";
+		if pingsrv!=nil && broadcasturl!=nil then set run=pingstartRun; 
+		0
+	);;
+
+fun runconfigstart=
+	if netState==RT2501_S_CONNECTED && wavrunning==0 then set run=configwaitRun httprequest "GET" Secholn configurl nil #_configcbhttp HTTP_NORMAL;
+	0;;
+
+fun runconfigwait http=
+	// check timeout and retry
+	if (httpinactive http)>10000 then
+	(
+		Secholn "##timeout on configwait";
+		httpabort http;
+		set run=configstartRun
+	);
+
+	0;;
+
+
+fun bintoi3 s x=((strget s x)<<16)+((strget s x+1)<<8)+(strget s x+2);;
+
+
+fun pingextract_ s i res=
+  Secho ">>>> pingextract_ s = ";Secholn s;
+  Secho ">> i = ";Iecholn i;
+  Secho ">> s length = ";Iecholn strlen s;
+  	
+  let strget s i-> code in 
+  if 1==1 then
+  (
+    Secho ">> code = ";Iecholn code;
+    Secho ">>bintoi3 s i+1 len = ";Iecholn bintoi3 s i+1;
+    0
+  );
+    
+  if i<strlen s then 
+    let (strget s i)-> code in
+	  
+	  if code==255 then res
+	  else if code>=0 && code<=10 then
+		  let bintoi3 s i+1 -> len in
+		  if len>=0 then pingextract_ s i+4+len [code strsub s i+4 len]::res;;   //should find 255 here to end
+
+fun pingextract s=
+  Secho ">>>> pingextract s = ";Secholn s;
+	if (strget s 0)==0x7f then pingextract_ s 1 nil;;
+
+
+
+fun pingextract_2 s i res=  //extract text msg
+  Secho ">>>> pingextract_2 s = ";Secholn s;
+  Secho ">> i = ";Iecholn i;
+  Secho ">> s length = ";Iecholn strlen s;
+  	
+  let strget s i-> code in 
+  if 1==1 then
+  (
+    Secho ">> code = ";Iecholn code;
+    Secho ">>bintoi3 s i+1 len = ";Iecholn bintoi3 s i+1;
+    0
+  );
+    
+  if i<strlen s then 
+    let (strget s i)-> code in
+	  
+	  /*
+	  if code==255 then res
+	  else if code>=0 && code<=10 then
+		  let bintoi3 s i+1 -> len in
+		  if len>=0 then pingextract_ s i+4+len [code strsub s i+4 len]::res;;  
+    */
+    
+    let strlen s->len in
+    if len>0 then pingextract_ s 1 [code strsub s 1 len]::res;;  
+
+fun pingextract2 s=
+  Secho ">>>> pingextract2 s = ";Secholn s;
+	pingextract_2 s 1 nil;;
+
+
+
+fun pingextract2 s=
+  Secho ">>>> pingextract 2 s = ";Secholn s;
+ 
+  if (strget s 0)==0x7f then 
+  (
+    pingextract_ s 1 nil;  //call original
+    0
+  )
+  else     //text format?
+  (
+    Secholn ">> text format detected";
+    0
+  );;
+  
+  
+fun srcextract s i=
+	if s!=nil && i<strlen s then [strget s i strget s i+1]::srcextract s i+2;;
+
+
+fun rscfilterurl url=
+  Secholn ">>>> rscfilterurl";
+	if 0==strstr url BROADCAST_KEYWORD 0 then strcat broadcasturl strsub url strlen BROADCAST_KEYWORD nil
+	else url;;
+
+fun rscfrommsg l=
+  Secholn ">>>> rsffrommsg"; //l is a list
+  
+	if l!=nil then let hd l->[key val] in
+	if (!strcmp key "MU") || (!strcmp key "CH") then [val /*nil*/300000]::rscfrommsg tl l
+	else if (!strcmp key "MC") then [val SIGNCUTSIZE]::rscfrommsg tl l
+	else rscfrommsg tl l;;
+
+fun msgInit msg=
+Secholn "####################msgInit";
+	let atoi listswitchstr msg "ID" -> id in
+	(
+		Secho "ID=";Secholn itoh id;
+		Secho "CurrentTrame = ";Secholn itoh currenttrame;
+		if id==MSG_IDLE then
+		(
+			if currenttrame==MSG_IDLE then
+			(
+				earGo 0 extleft 0;
+				earGo 1 extright 0;
+				waitRun time+pingdelay
+			)
+			else
+			(
+				set currenttrame=id;
+				Secholn "-> idle";
+				setleds 0xff00ff;
+				earReset;
+				idlewaitRun
+			)
+		)
+		else if id==MSG_ASLEEP then
+		(
+			set currenttrame=id;
+			Secholn "-> asleep";
+			setleds 0xff00ff;
+			earReset;
+			asleepRun
+		)
+		else
+		(
+			// TODO : tester si le message est déjà en mémoire
+			set msgtoplay=msg;
+			set rsctoget=rscfrommsg msg;
+			set rscloaded=nil; 
+			msgloadstartRun
+		)
+	);;
+
+fun _msgloadcbhttp http res size=
+  Secholn ">>>> _msgloadcbhttp";
+	if recording then
+	(
+		httpabort http;
+		nil
+	)
+	else if res!=nil then
+	(
+//		Secholn res;
+		set rsctmp=res::rsctmp;
+		if size!=nil && (slistlen rsctmp)>size then
+		(
+			httpabort http;
+			_msgloadcbhttp http nil nil
+		);
+		0
+	)
+	else
+	(
+		let hd rsctoget ->[url _] in
+		set rscloaded=[url tl rev rsctmp nil]::rscloaded;
+		set rsctoget=tl rsctoget;
+		set run=msgloadstartRun;
+		0
+	);;
+
+fun msgstart=
+  Secholn ">>>> msgstart!!!";
+	//setleds 0xff0000;
+	//earReset;
+	set palette=tabnew 8 0xff;
+	set run=msginitwaitRun;
+	set currenttrame=atoi listswitchstr msgtoplay "ID";
+	0;;
+
+  
+fun runmsgloadstart=
+  Secholn ">>>> runmsgloadstart";
+  
+  let hd rsctoget -> [url size] in
+	
+	if url==nil then
+	(
+		Secholn "Ready to run !";
+		msgstart;
+		0
+	)
+	else if nil!=listswitchstr rscloaded url then
+	(
+		set rsctoget=tl rsctoget;
+		runmsgloadstart 
+	)
+	else
+	(
+		set rsctmp=nil;
+		Secho ">>!!rscfilterurl = ";Secholn rscfilterurl url;
+		set run=msgloadwaitRun httprequest "GET" Secholn rscfilterurl url nil fixarg3 #_msgloadcbhttp size HTTP_STREAM;
+		0
+	);;
+	
+
+fun runmsgloadwait http=
+	if (httpinactive http)>10000 then
+	(
+		Secholn "##timeout on msgload";
+		httpabort http;
+		set run=msgloadstartRun
+	);
+	0;;
+
+
+fun runmsginitwait=
+    Secholn ">>>> runmsginitwait";
+	// check timeout (oreille bloquée)
+	if earReady then
+	(
+		setleds 0;
+		set msgtimestart=time;
+		set run=msgRun 0
+	);
+	0;;
+
+fun runTextInitWait=
+  //Secholn ">>>> runmsginitwait";
+	// check timeout (oreille bloquée)
+	if earReady then
+	(
+		setleds 0;
+		set msgtimestart=time;
+		set run=textRun t0+1;
+		0
+	);
+	0;;
+
+fun _controlsend val=
+	if val!=nil then set senddata=val;
+	set run=pingsendwaitRun httprequest "GET" Secholn pingurl nil #_pingcbhttp2 HTTP_NORMAL;
+	0;;
+
+fun runpingsendwait http=
+	for i=1;i<4 do let osc time_ms-i*50 -> v in led i v*257;
+	// check timeout and retry
+	if (httpinactive http)>10000 then
+	(
+		Secholn "##timeout on pingsendwait";
+		httpabort http;
+		_controlsend nil
+	);
+
+	0;;
+
+
+
+
+fun msgend=
+	_controlsend 2;
+	0;;
+
+var recordtimestart;;
+var recordmode;;
+var recorddata;;
+
+fun runrecordstart=
+	if !wavrunning then
+	(
+	led 0 0xff0000;//if time_ms&64 then 0xff0000 else 0;
+//		setleds 0;
+		unforcevol;
+		recstart;
+		set recordtimestart=time_ms;
+		set run=recordRun
+	);;
+
+fun _controlrecord mode=
+	setleds 0x00;
+	wavstop;
+	motorset 0 0;
+	motorset 1 0;
+	forcevol 0;
+	wavstartlocalEx midi_startrecord::nil 200;
+	set recordmode=mode;
+	set run=recordStartRun;
+	0;;
+
+fun _cbrecordhttp http res=
+	set recorddata=nil;
+	Secholn res;
+	setleds 0x00;
+	set run=waitRun time+recorddelay;
+	0;;
+
+fun runrecordwait z=
+	led 0 if time_ms&64 then 0xff0000 else 0;
+	// check timeout and retry
+	let z->[retry http] in
+	if (httpinactive http)>10000 then
+	(
+		Secholn "##timeout on recordwait";
+		httpabort http;
+		if retry>0 then
+		set run=recordwaitRun [retry-1 httprequest "POST" Secholn recordurl recordmode recorddata #_cbrecordhttp HTTP_NORMAL]
+		else
+		(
+			set recorddata=nil;
+			set run=waitRun time+1
+		)
+	);
+
+	0;;
+
+
+fun runrecord=
+//	led 0 if time_ms&1024 then 0xff0000 else 0;
+	if !button2 || ((time_ms-recordtimestart)>8000)then
+	(
+		recstop;
+		setleds 0x00;
+		let recriff -> wavfile in
+		(
+				wavstartlocal midi_endrecord::nil;
+				set recorddata=strcatlist wavfile;
+				set run=recordwaitRun [3 httprequest "POST" Secholn recordurl recordmode recorddata #_cbrecordhttp HTTP_NORMAL]
+		)
+	);;
+
+
+fun msgstartchor chor i0=
+  Secho ">>>> msgstartchor time_ms = ";Iecho time_ms;Secho " i0 = ";Iecholn i0;
+	set chordata=strcatlist chor;
+	Secho "chordata = ";Secholn chordata;
+	set chorindex=4+1;	// we skip the header and the first waiting
+	set chortimescale=0;
+	set chornexttime=time_ms;
+	set run=msgchorRun i0;
+	0;;
+
+fun taichistart =
+	Secholn ">>>> taichistart ";
+	set chorrandom=3;//((Iecholn rand&255)*6)>>8;
+	set chortaichimotor={rand&1 rand&1};
+	earUndetect;
+	msgstartchor taichi::nil nil;
+	0;;
+
+fun msgendchor i0=
+	set chornexttime=nil;
+	if i0==nil then
+	(
+		earDetect;
+		set run=waitRun time+pingdelay
+	)
+	else set run=msgRun i0+1;
+	
+	if t0==nil then
+	(
+		earDetect;
+		set run=waitRun time+pingdelay
+	)
+	else set run=textRun t0+1; //do next msg
+	0;;
+
+
+fun setpalette p=
+	Secho "############setpalette ";Iecholn p&7;
+	let palettes.(p&7) -> p in
+	for i=0;i<8 do let i*3 -> j in set palette.i=((p.(j))<<16)+((p.(j+1))<<8)+p.(j+2);;
+
+//setcolor (x>>24) x&0xffffff
+fun setcolor i val=
+	Secho "############setcolor ";Iecho i; Secho " = $";Secholn itoh val;
+	set palette.i=val;;
+
+
+fun runmsgchor i0=
+  Secho ">>>> runmsgchor i:";Iecho chorindex; Secho " t:";Iecholn chornexttime;
+	
+	if chornexttime-time_ms<=0 then
+	(
+	  let strget chordata chorindex -> code in
+	  (
+		  Secho ">> code = "; Iecholn code;
+		  0
+		);
+		
+		if chorindex>=strlen chordata then msgendchor i0
+		else let strget chordata chorindex -> code in
+		set chorindex=chorindex+2+
+		
+		if code==CH_frame_duration then
+		(
+			set chortimescale=10*strget chordata chorindex+1;
+			1	//nb de paramètres
+		)
+		else if code==CH_set_motor then
+		(
+			earGo (strget chordata chorindex+1) (strget chordata chorindex+2) (strget chordata chorindex+3);
+			3
+		)
+		else if code==CH_set_led_color then
+		(
+			Secholn ">> set_led_color <<<<<<<<<<<<<<<<<<<<<<<<<<<<";
+			led 4-strget chordata chorindex+1 ((strget chordata chorindex+2)<<16)+((strget chordata chorindex+3)<<8)+(strget chordata chorindex+4);
+			6
+		)
+		else if code==CH_set_led_palette then
+		(
+//			Secho "set_led_palette ";
+			led 4-strget chordata chorindex+1 palette.(7&strget chordata chorindex+2);
+			2
+		)
+		else if code==CH_randmidi then
+		(
+			Secholn "randmidi";
+			let getmidilist -> t in
+			let tablen t -> n in
+			if n>0 then let t.(Iecholn ((rand&255)*n)>>8) -> music in
+				wavstartlocal music::nil;
+			0
+		)
+		else if code==CH_avance then
+		(
+			Secholn "avance";
+			let (strget chordata chorindex+1) -> i in
+			let (strget chordata chorindex+2) -> delta in
+			earGo i (earTarget i)+if chortaichimotor.i then -delta else delta chortaichimotor.i;
+			2
+		)
+		else if code==CH_ifne then
+		(
+			Secho "ifne ";Iecholn chorrandom;
+			if chorrandom==(Iecholn strget chordata chorindex+1) then 3
+			else 3+((strget chordata chorindex+2)<<8)+(strget chordata chorindex+3)
+		)
+		else if code==CH_attend then
+		(
+			Secholn "attend";
+			if earComplete && wavrunning==0 then 0
+			else -2
+		)
+		else
+		(
+			msgendchor i0;
+			0
+		);
+		if chornexttime!=nil then
+		(
+			set chornexttime=chornexttime+(strget chordata chorindex-1)*chortimescale;
+			runmsgchor i0
+		)
+	);;
+
+fun _pingcbstreaming http res lastid=
+	Secholn "streaming ping";
+	if !recording then
+	let nil->msg in
+	(
+		let pingextract httpgetcontent res -> ltrame in
+		(
+			for l=ltrame;l!=nil;tl l do let hd l-> [code val] in
+			(
+				if code==10 then
+				(
+					//uncrypt val 1 nil 0x47 47;  //cck
+					set msg=dumpconfig filterconfig val 1;
+					0
+				);
+				0
+			)
+		);
+		if msg!=nil then
+		let atoi listswitchstr msg "ID" -> id in
+		if id!=currenttrame && currenttrame==lastid then
+		(
+			wavstop;
+			0
+		)
+	);
+	0;;
+
+
+var chorst_data;;
+var chorst_index;;
+var chorst_tempo;;
+var chorst_repeat;;
+var chorst_nexttime;;
+
+fun dochorstream=
+	if chorst_data==nil || ((chorst_index>=strlen chorst_data)&&(chorst_repeat<1)) then
+	(
+		Secho "Start Chor Stream ";
+		set chorst_data=listnth chorstream Iecholn rand&3;
+		set chorst_index=1;
+		Secho "tempo "; Iecholn set chorst_tempo=160+(((rand&255)*90)>>8);
+		Secho "repeat "; Iecholn set chorst_repeat=3+(((rand&255)*18)>>8);
+		set chorst_nexttime=time_ms
+	);
+	while (chorst_index<strlen chorst_data) && time_ms-chorst_nexttime > 0 do
+	(
+		led strget chorst_data chorst_index
+			((strget chorst_data chorst_index+1)<<16) + 
+			((strget chorst_data chorst_index+2)<<8) + 
+			((strget chorst_data chorst_index+3));
+		set chorst_index=chorst_index+5;
+		let strget chorst_data chorst_index-1 -> delay in
+		if delay!=nil then set chorst_nexttime=chorst_nexttime+delay*chorst_tempo
+	);
+	if (chorst_index>=strlen chorst_data) then
+	(
+		set chorst_index=1;
+		Secho "repeat "; Iecholn set chorst_repeat=chorst_repeat-1;
+		set chorst_nexttime=time_ms
+	);
+	0;;
+
+fun runmsgchorstreaming z=
+  //Secholn ">>>> runmsgchorstreaming";
+	let z->[i0 t0 ping0] in
+	if wavrunning==0 then
+	(
+		motorset 0 0;
+		motorset 1 0;
+		set run=msgRun i0+1;
+		//set run=textRun u0+1;
+		//set run=waitRun time+pingdelay;
+		nil
+	)
+	else
+	(
+		if wav_buffering then
+		(
+			led 0 if time_ms&256 then 0xff00ff else 0
+			
+		)
+		else dochorstream;  
+
+		if (time-msgtimestart)>STREAMING_MOTORSTOP then
+		(
+			motorset 0 0;
+			motorset 1 0;
+			0
+		)
+		else
+		(
+			let (osc ((time_ms*(3))>>8))>>6 -> i0 in
+				motorset 0 if i0==3 then 1 else if i0==1 then (-1) else 0;
+			let (osc ((time_ms*(5))>>8))>>6 -> i0 in
+				motorset 1 if i0==3 then 1 else if i0==1 then (-1) else 0
+		);
+		if (time-ping0)>STREAMING_PING then
+		(
+			update z with [_ _ time];
+			Secholn "requesting url";
+			httprequest "GET" Secholn pingurl nil fixarg3 #_pingcbstreaming currenttrame HTTP_NORMAL
+			
+		);
+		0
+	);;
+
+fun runasleep=
+	if earReady then
+	(
+		setleds 0;
+		earGo 0 8 0;
+		earGo 1 8 0;
+		set run=waitRun time+pingdelay;
+		0
+	);;
+
+var delay;;
+var url;;
+var earLeftPos = 255;;
+var earRightPos = 255;;
+
+fun bottomled=
+	if !earDetecting then
+	let (time-lasthttpevent)>LED_TIMEOUT -> offline in
+	let match run with (msgloadwaitRun _-> 2)|(_->0) -> download in
+	let osc time_ms>>(4-download) -> v in
+	//led 4 if !offline then v*0x010001 else 0xff00ff;  //oink
+	led 4 if !offline then v*BOTTOMCOLOR else 0xff00ff;
+	0;;
+
+
+//process text messages received from pingcbhttp2
+fun runText u0=
+  //Secho ">>>> runTextMsg i0=";Iecholn t0;
+  
+  set moreText=1;
+  
+  let listnth texttoplay u0 -> [key val] in
+  (
+    Secho ">> key = ";Secho key;Secho " val = ";Secholn val;
+    0
+  );
+  
+  
+  if time_ms < delay then Secho ".";
+  
+  if time_ms > delay then  //previous delay command?
+  (
+    Secholn ">> time_ms > delay";
+    let listnth texttoplay u0 -> [key val] in
+  	
+  	if (Secholn key)==nil then
+  	(
+  		Secholn ">> End of Text Messages";
+  		Secho ">> pingdelay = ";Iecholn pingdelay;
+  		//_controlsend 2; //this will send request back to server to acknowledged
+  		earDetect;
+  		set run=waitRun time+pingdelay;
+  		set moreText=0;
+  		0
+  	)
+  	/*
+  	else if (strget key 0) == 48 then //backslash
+    (
+      Secholn "$ message received";
+      //let Iecholn key -> val in
+      //set key = dump taichi;
+      set val = atoi key;
+      dump val;
+      msgstartchor val::nil nil;
+      0
+    )
+    */
+   	else if (!strcmp key "RANDOMMIDI") then
+  	(
+  	  let getmidilist -> t in
+			let tablen t -> n in
+			if n>0 then let t.(Iecholn ((rand&255)*n)>>8) -> music in
+			(
+			  Secho ">> t = ";Secholn t.3;
+			  Secho ">> Midi = "; Secholn music;
+			  wavstartlocal music::nil;
+			  0
+			);
+			set run=msgchorRun 0;
+			//set t0=t0+1;
+      //set run=textRun t0;
+    	0
+  	)
+    else if (!strcmp key "COMMUNION") then
+  	(
+  	  controlsound midi_communion;
+			set run=textRun u0+1;
+    	0
+  	)
+  	else if (!strcmp key "CHORSTREAM") then
+  	(
+  	  dochorstream;
+   	  set run=textRun u0+1;
+    	0
+  	)
+  	else if (!strcmp key "SLEEP") then
+  	(
+  	  set currenttrame=MSG_ASLEEP; //id
+			Secholn "-> asleep";
+			setleds 0;
+			earGo 0 8 0;  //lower ears
+		  earGo 1 8 0;
+			set run=asleepRun;
+      0
+  	)
+  	else if (!strcmp key "EARSDOWN") then
+  	(
+  	  earGo 0 8 0;
+		  earGo 1 8 0;
+		  set run=textRun u0+1;
+    	0
+  	)
+  	else if (!strcmp key "EARSUP") then
+  	(
+  	  earReset;
+  	  set currenttrame=MSG_IDLE;
+			set run=textRun u0+1;
+    	0
+  	)
+  	else if (!strcmp key "EARLEFT") then
+  	(
+  	  earGo 1 atoi val 0;
+			set run=textRun u0+1;
+    	0
+  	)
+  	else if (!strcmp key "EARRIGHT") then
+  	(
+  	  earGo 0 atoi val 0;
+			set run=textRun u0+1;
+    	0
+  	)
+   	else if (!strcmp key "LEFTTWITCH") then
+  	(
+  	  if ((atoi val) == 1) then
+  	  ( 
+  	    set earLeftPos = earLeftPos+1;
+        if (earLeftPos > 16) then set earLeftPos=0;  //255 will crash the bunny
+  	    earGo 1 earLeftPos 0;
+  	    0
+  	  )
+  	  else
+  	  ( 
+  	    set earLeftPos = earLeftPos-1;
+        if (earLeftPos < 0) then set earLeftPos=16;
+  	    earGo 1 earLeftPos 1;
+  	    0
+  	  );
+  	  
+      set run=textRun u0+1;
+    	0
+  	)
+  	else if (!strcmp key "RIGHTTWITCH") then
+  	(
+  	  if ((atoi val) == 1) then
+  	  ( 
+  	    set earRightPos = earRightPos+1;
+        if (earRightPos > 16) then set earRightPos=0;
+  	    earGo 0 earRightPos 0;
+  	    0
+  	  )
+  	  else
+  	  ( 
+  	    set earRightPos = earRightPos-1;
+        if (earRightPos < 0) then set earRightPos=16;
+  	    earGo 0 earRightPos 1;
+  	    0
+  	  );
+  	  
+  	  set run=textRun u0+1;
+    	0
+  	)
+  	else if (!strcmp key "BOTTOMCOLOR") then
+  	(
+  	  Secho ">>BOTTOMCOLOR ";Secholn val;
+
+      set BOTTOMCOLOR=BOTTOMVIOLET; //default
+  	  
+  	  if (!strcmp val "Blue") then set BOTTOMCOLOR=BOTTOMBLUE;
+  	  if (!strcmp val "Green") then set BOTTOMCOLOR=BOTTOMGREEN;
+  	  if (!strcmp val "Yellow") then set BOTTOMCOLOR=BOTTOMYELLOW;
+  	  if (!strcmp val "Red") then set BOTTOMCOLOR=BOTTOMRED;
+  	  if (!strcmp val "Teal") then set BOTTOMCOLOR=BOTTOMTEAL;
+  	  if (!strcmp val "Violet") then set BOTTOMCOLOR=BOTTOMVIOLET;
+  	  if (!strcmp val "White") then set BOTTOMCOLOR=BOTTOMWHITE;
+  	    	  
+  	  set run=textRun u0+1;
+    	0
+  	)
+   	else if (!strcmp key "PLAY") then
+  	(
+  	  if wavrunning==0 then
+  	  (
+    	Secho ">>PLAY ";Secholn val;
+    		
+    	setleds 0;
+    	set msgtimestart=time;
+      	led 0 0xff00ff;
+    	set chorst_data=nil;
+		    
+    	set url=strcatlist pingsrv::"/vl/"::val::nil; 
+        set wav_url = url;
+        
+        Secho ">>url1 = ";Secholn url;
+        //set currenttrame=MSG_IDLE;
+        
+        httpabort wav_http;  
+ 		set wav_http=nil;    
+        
+        set wav_first=1;
+        wavstarthttp url;
+        
+    	set run=textRun u0+1;
+    	Secholn "########################## done";
+    	0
+  		)
+  		
+    )
+    else if (!strcmp key "PLAY2") then
+  	(
+  	  if wavrunning==0 then
+  	  (
+    	Secho ">>PLAY2 ";Secholn val;
+    		
+    	setleds 0;
+    	set msgtimestart=time;
+      	led 0 0xff00ff;
+    	set chorst_data=nil;
+		    
+        set url = val;
+        
+        Secho ">>url1 = ";Secholn url;
+        
+        httpabort wav_http;  
+ 		set wav_http=nil;    
+        set wav_url = url;
+        
+        set wav_first=1;
+        wavstarthttp url;
+        //let rscfilterurl val -> music in wavstarthttp music;
+		
+    	set run=textRun u0+1;
+    	Secholn "########################## done";
+    	0
+  		)
+  		
+    )
+    else if (!strcmp key "STREAM") then
+  	(
+  	  if wavrunning==0 then
+  	  (
+        Secho ">>url = ";Secholn val;
+      
+		setleds 0;
+    	set msgtimestart=time;
+      	led 0 0xff00ff;
+    	set chorst_data=nil;
+		    
+    	set url=val; //strcatlist pingsrv::"/vl/"::val::nil; 
+        Secho ">>url = ";Secholn url;
+        
+        set chorst_data=nil;
+        let rscfilterurl val -> music in wavstarthttp music;
+		set run=msgchorstreamRun [u0 time time];
+		
+        //wavstarthttp url;
+    	//set run=textRun u0+1;
+    	Secholn "########################## done";
+    	
+  		0
+  		    
+		
+  		)
+    )
+    else if (!strcmp key "DOTAICHI") then
+    (
+      Secholn ">>Doing taichi"; 
+      set currenttrame=MSG_IDLE;
+      taichistart;  
+      //set run=textRun t0;  //msgendchor sets this msg upon completion
+      0
+    )
+    else if (!strcmp key "IDLE") then
+    ( 
+      Secholn ">>IDLE"; 
+      set currenttrame=MSG_IDLE;
+      set run=textRun u0+1;
+      0
+    )
+    else if(!strcmp key "LED1") then
+    (
+      if(!strcmp val "AMBER")  then led 1 AMBER;
+      if(!strcmp val "VIOLET") then led 1 VIOLET;
+      if(!strcmp val "RED")    then led 1 RED;
+      if(!strcmp val "GREEN")  then led 1 GREEN;
+      if(!strcmp val "TEAL")   then led 1 TEAL;
+      if(!strcmp val "YELLOW") then led 1 YELLOW;
+      set run=textRun u0+1;
+      0
+    )
+    else if(!strcmp key "LED2") then
+    (
+      if(!strcmp val "AMBER")  then led 2 AMBER;
+      if(!strcmp val "VIOLET") then led 2 VIOLET;
+      if(!strcmp val "RED")    then led 2 RED;
+      if(!strcmp val "GREEN")  then led 2 GREEN;
+      if(!strcmp val "TEAL")   then led 2 TEAL;
+      if(!strcmp val "YELLOW") then led 2 YELLOW;
+      set run=textRun u0+1;
+      0
+    )
+    else if(!strcmp key "LED3") then
+    (
+      if(!strcmp val "AMBER")  then led 3 AMBER;
+      if(!strcmp val "VIOLET") then led 3 VIOLET;
+      if(!strcmp val "RED")    then led 3 RED;
+      if(!strcmp val "GREEN")  then led 3 GREEN;
+      if(!strcmp val "TEAL")   then led 3 TEAL;
+      if(!strcmp val "YELLOW") then led 3 YELLOW;
+      set run=textRun u0+1;
+      0
+    )
+    else if(!strcmp key "NETTIME") then
+    (
+      Secho ">> current wav_net timeout is "; Iecholn WAV_NET_TIMEOUT;
+      set WAV_NET_TIMEOUT = atoi val;
+      Secho ">> wav_net_timeout set to "; Secholn val;
+      set run=textRun u0+1;
+      0
+    )
+    else if(!strcmp key "LEDOFF") then
+    (
+      led 1 0;
+      led 2 0;
+      led 3 0;
+      set run=textRun u0+1;
+      0
+    ) 
+    else if(!strcmp key "WAIT") then
+    (
+      set delay = time_ms + (atoi val);  //delay is millisecond
+      
+      Secho ">> time_ms = ";Iecholn time_ms;
+      Secho ">> delay ";Iecholn delay;
+      set run=textRun u0+1;
+      0
+    )
+    else if(!strcmp key "FINISH") then
+    (
+      if wavrunning==0 then set run=textRun u0+1;
+      0
+    )
+    else if(!strcmp key "CHEERLIGHTS") then
+    (
+      if(!strcmp val "RED")  then (set cheer=RED; set BOTTOMCOLOR=BOTTOMRED);
+      if(!strcmp val "GREEN") then (set cheer=GREEN;set BOTTOMCOLOR=BOTTOMGREEN);
+      if(!strcmp val "BLUE")    then (set cheer=BLUE;set BOTTOMCOLOR=BOTTOMBLUE);
+      if(!strcmp val "CYAN")  then (set cheer=CYAN;set BOTTOMCOLOR=BOTTOMTEAL);
+      if(!strcmp val "WHITE")   then (set cheer=WHITE;set BOTTOMCOLOR=BOTTOMWHITE);
+      if(!strcmp val "WARMWHITE") then (set cheer=WARMWHITE;set BOTTOMCOLOR=BOTTOMWHITE);
+      if(!strcmp val "PURPLE")  then (set cheer=PURPLE;set BOTTOMCOLOR=BOTTOMVIOLET);
+      if(!strcmp val "MAGENTA")  then (set cheer=MAGENTA;set BOTTOMCOLOR=BOTTOMVIOLET);
+      if(!strcmp val "YELLOW")  then (set cheer=YELLOW;set BOTTOMCOLOR=BOTTOMYELLOW);
+      if(!strcmp val "ORANGE")  then (set cheer=ORANGE;set BOTTOMCOLOR=BOTTOMORANGE);
+     
+      led 1 cheer;
+      led 2 cheer;
+      led 3 cheer;
+      led 0 cheer;
+      
+      //setleds cheer;
+      //set BOTTOMCOLOR=cheer;  //screws up led
+      //bottomled;
+      set run=textRun u0+1;
+      0
+    )
+    else  //invalid key
+    (
+      Secholn ">> Invalid key";
+  		Secho ">> pingdelay = ";Iecholn pingdelay;
+  		earDetect;
+  		set run=waitRun time+pingdelay;
+  		set moreText=0;
+  		0
+    )
+  );;
+  
+fun runmsg i0=
+  Secho ">>>> runmsg #";Iecholn i0;
+  Secho ">> time_ms = ";Iecholn time_ms;
+
+  let listnth msgtoplay i0 -> [key val] in
+  (
+    Secho ">> key = ";Secho key;Secho " val = ";Secholn val;
+    0
+  );
+  
+	let listnth msgtoplay i0 -> [key val] in
+	if (Secholn key)==nil then
+	(
+		msgend;
+		0
+	)
+	else if (!strcmp key "MU") || (!strcmp key "MC") then
+	(
+		Secholn "###########Start music";
+		let listswitchstr rscloaded Secholn val -> music in
+			if music==nil then Secholn "###nilmusic";
+		wavstartlocal listswitchstr rscloaded val;
+		set run=msgRun i0+1;
+		0
+	)
+	else if !strcmp key "ST" then
+	(
+		Secholn "###########Start streaming music";
+		//IPecho netdns 0 1;
+		//startdnsclient;
+		set chorst_data=nil;
+		let rscfilterurl val -> music in wavstarthttp music;
+		set run=msgchorstreamRun [i0 time time];
+		0
+	)
+	else if !strcmp key "MW" then
+	(
+		if wavrunning==0 then set run=msgRun i0+1;
+		0
+	)
+	else if !strcmp key "CH" then
+	(
+	    Secholn ">> Found a CH key!! <<<<<<<<<<<<<<<<<<<<<<<<<<";
+	    Secho   ">> val = ";Secholn val;
+	    msgstartchor listswitchstr rscloaded val i0;
+		//msgstartchor ledtry::nil nil;
+		0
+	)
+	else
+	(
+		if !strcmp key "PL" then setpalette atoi val;
+		if !strcmp key "CL" then
+		(
+		    Secholn ">> Found a CL key!! <<<<<<<<<<<<<<<<<<<<<<<<<<<";
+			let atoi val -> x in setcolor (x>>24) x&0xffffff;
+	        0
+		);
+		set run=msgRun i0+1;
+		runmsg i0+1
+	);;
+
+
+var nexttaichi;;
+
+fun dotaichinow=
+	Secho "checktaichi ";
+	let Iecholn infoGet TYPE_taichi -> v in
+	if v then
+		let if nexttaichi!=nil then time-nexttaichi>0 else 0 -> now in
+		(
+			if now || nexttaichi==nil then set nexttaichi=time+((v*60*((rand&127)+64))>>7);
+			now
+		)
+	else
+	(
+		set nexttaichi=nil;
+		0
+	);;
+
+var isText=0;;
+var web;;
+var ans;;
+//var ttsUrl="http://translate.google.com/translate_tts?tl=en&q=";; //Hello there;
+//var ttsUrl=strc"http://translate.google.com/translate_tts?tl=en&q=";;
+
+var handled;;
+var delay_ts;;
+var delay_wav;;
+
+//---------------------------------------------------------------------------
+//we process messages here in the callback if they are the custom text format
+//---------------------------------------------------------------------------
+fun _pingcbhttp2 http res=   //res is the whole msg received from website
+	Secholn ">>>> _pingcbhttp2";
+	set senddata=0; //reset button press event upon receiving msg from rabbit  
+	if !recording then Secholn ">>We are not recording";
+	
+	set web = httpgetcontent res;
+  
+  Secho ">> web = ";Secholn web;
+  Secho "web 0 = ";Iecholn (strget web 0);
+  
+  if (strget web 0) == 0x7f then
+	(
+	  Secholn ">> Code format detected";
+    _pingcbhttp http res;  //call original
+    0
+  )
+  else
+  (
+    Secholn ">> Text format detected";
+    set ans = filterconfig web 0;
+    set currenttrame=MSG_IDLE;
+    set texttoplay=dumpconfig filterconfig web 0;
+    set run=textRun 0; 
+    0
+  );;
+  
+ 
+	  
+fun _pingcbhttp http res=   //res is the whole msg received from website
+	Secholn ">>>> _pingcbhttp";
+	
+	let nil->msg in
+	(
+		let pingextract dump httpgetcontent res -> ltrame in
+		(
+		  if ltrame==nil then Secho ">> ltrame is nil, invalid or no message, sorry. ltrame=";
+			if ltrame==nil then Iecholn ltrame;  
+			if ltrame!=nil then Secho ">> ltrame = "; 
+			if ltrame!=nil then Iecholn ltrame;
+			if ltrame!=nil then set senddata=0;	// implicit acknowledgment sending data
+			for l=ltrame;l!=nil;tl l do let hd l-> [code val] in
+			(
+				Iecho code; Secho " : ";
+				if code==3 then set pingdelay=Iecholn (strget val 0)*1;
+				if code==4 then
+				(
+//					set sources=srcextract dump strsub val 4 nil 0;
+					infoUpdate strsub val 4 nil;
+					let strget val 20 -> newleft in
+					let strget val 21 -> newright in
+					(
+						if (extleft!=nil) &&((newleft!=extleft) || (newright!=extright)) then
+						(
+							controlsound midi_communion
+						);
+						set extleft=newleft;
+						set extright=newright
+					)
+				);
+				if code==10 then
+				(
+					//uncrypt val 1 nil 0x47 47;  //cck
+					//Secho "val = ";Secholn val;
+					set msg=dumpconfig filterconfig val 1;
+					0
+				);
+				if code==9 then
+				(
+					reboot 0x0407FE58 0x13fb6754; 
+					0
+				);
+				0
+			)
+		);
+		if msg==nil then
+		(
+			if currenttrame==MSG_IDLE then
+			(
+			  Secholn "Received MSG_IDLE";
+				earGo 0 extleft 0;
+				earGo 1 extright 0;
+				if dotaichinow then (taichistart;nil)
+				else set run=waitRun time+pingdelay
+			)
+			else set run=waitRun time+pingdelay
+		) 
+		else
+		set run=msgInit msg
+	);
+	
+	0;;
+
+fun runpingstart=
+  Secholn ">>>> runpingstart <<<<<<<<<<<<<<<<<<<<<<<<< "; //breaks bunny below
+ 	if netState==RT2501_S_CONNECTED then set run=pingwaitRun httprequest "GET" Secholn pingurl nil #_pingcbhttp2 HTTP_NORMAL;
+	0;;
+ 
+fun runpingwait http=
+  //Secholn ">>>> runpingwait";
+	// check timeout and retry
+	if (httpinactive http)>10000 then  //was 10000
+	(
+		Secholn "##timeout on pingwait";
+		httpabort http;
+		set run=waitRun time+pingdelay
+	);
+	0;;
+
+//restarts the ping after the wait period is over
+fun runwait t=
+  //Secho ">>>> runwait t="; Iecho t; Secho " time ="; Iecholn time; 
+	if t-time<0 then Secholn ">> restarting ping <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<";
+	if t-time<0 then set run=pingstartRun;
+	0;;
+
+
+fun runidlewait=
+  Secholn ">>>> runidlewait";
+	// check timeout (oreille bloquée)
+	if earReady then
+	(
+		earDetect;
+		setleds 0;
+		earGo 0 extleft 0;
+		earGo 1 extright 0;
+		set run=waitRun time+pingdelay
+	);
+	0;;
+
+var lastrfid;;
+
+fun _cbrfidhttp http res=
+	Secholn res;
+	0;;
+
+fun controlrfid=
+	let rfidGet -> rfid in
+	if strcmp rfid lastrfid then
+	(
+		set lastrfid=rfid;
+		if rfid!=nil then
+		(
+			controlsound midi_abort;
+			httprequest "GET" rfidurl rfid nil #_cbrfidhttp HTTP_NORMAL
+		)
+	);
+	0;;
+
+fun controlplay=
+	let buttongetevent -> ev in
+	if ev!=nil then
+	(
+		Secholn "*****************controlplay";
+		wavstop;
+		earStop;
+		if ev==BUTTON_CLIC then	(controlsound midi_abort;_controlsend 5) //pause
+		else if ev==BUTTON_DCLIC then (set action=2;controlsound midi_ack;_controlsend 1) //ackall
+		else if ev==BUTTON_LCLIC then _controlsend 5 //pause ou record ?
+	) ;;
+	
+	
+
+//button click evets
+fun controlwait=
+	let buttongetevent -> ev in
+	let if ev==nil then eargetevent else ev -> ev in
+	if ev!=nil then
+	(
+		Secholn ">>>>>>>>>>>>>>>>>>>controlwait";
+		wavstop;
+		earStop;
+		if ev==BUTTON_CLIC then	_controlsend 3 //relire button click event sent in sd variable
+		else if ev==BUTTON_DCLIC then (controlsound midi_ack;_controlsend 1) //ackall
+		else if ev==BUTTON_LCLIC then _controlrecord 0	// _controlsend 4 //back ou record
+		else if ev==BUTTON_DLCLIC then _controlrecord 1	// _controlsend 4 //back ou record
+		else if ev&0x8000 then (controlsound midi_acquired;_controlsend ev)
+	);
+	controlrfid
+	;;
+
+
+
+var CONTROL_WAIT=1;;
+var CONTROL_PLAY=2;;
+
+fun loop=
+	wifiRun;
+
+	if netState==RT2501_S_IDLE then
+	match wifi with
+	(initW -> nil)
+	|(_ ->
+		Secholn "######### wifi lost";
+		set wifi=reconnectW;
+		0
+	);
+
+	buttonloop;
+//	buttongetevent;
+	let match run with
+	( configstartRun -> Secholn "run->conifgstartrun";earRun;bottomled;runconfigstart;0 )|
+	( configwaitRun http -> Secholn "run->configwaitrun"; earRun;bottomled;runconfigwait http ;  0)|
+	( pingstartRun -> Secholn "run->pingstartrun"; earRun;if currenttrame!=MSG_ASLEEP then bottomled;runpingstart;0)|
+	( pingwaitRun http -> Secholn "run->pingwaitrun"; earRun; if currenttrame!=MSG_ASLEEP then (infoRun;bottomled);runpingwait http;if currenttrame!=MSG_ASLEEP then CONTROL_WAIT)|
+	//( waitRun t -> earRun;if currenttrame!=MSG_ASLEEP then (infoRun;bottomled);runwait t; if currenttrame!=MSG_ASLEEP then CONTROL_WAIT)|
+    ( waitRun t -> earRun;if currenttrame!=MSG_ASLEEP then (bottomled);runwait t; if currenttrame!=MSG_ASLEEP then CONTROL_WAIT)|
+	( msgloadstartRun -> Secholn "run->msgloadstartrun";earRun;infoRun;bottomled;runmsgloadstart; CONTROL_WAIT)|  //cck 2 
+	( msgloadwaitRun http-> Secholn "msgloadwaitrun"; earRun;infoRun;bottomled;runmsgloadwait http;CONTROL_WAIT)|
+	( msginitwaitRun -> earRun;runmsginitwait;CONTROL_PLAY)|
+	( msgRun i-> Secholn "run->msgrun"; earRun;runmsg i;CONTROL_PLAY)|
+    ( textRun i-> if currenttrame!=MSG_ASLEEP then earRun;runText i;CONTROL_PLAY)|
+    ( textInitWaitRun -> earRun;runTextInitWait;CONTROL_PLAY)|
+    ( msgchorRun i-> Secholn "run->msgchorrun"; earRun;runmsgchor i;CONTROL_PLAY)|
+	( msgchorstreamRun i->runmsgchorstreaming i;CONTROL_PLAY)|
+	( idlewaitRun -> Secholn "run->idlewaitrun";earRun;runidlewait;CONTROL_WAIT)|
+    ( pingsendwaitRun http->Secholn "run->pingsendwaitrun"; bottomled;runpingsendwait http;0)|
+	( recordRun -> runrecord; 0)|
+	( recordwaitRun http->bottomled;runrecordwait http;0)|
+	( asleepRun ->Secholn "asleeprun"; earRun;runasleep;0) |
+	( recordStartRun -> runrecordstart; 0) |
+	(_->0) -> keymanager in
+	if keymanager==CONTROL_WAIT then controlwait
+	else if keymanager==CONTROL_PLAY then controlplay
+	else buttongetevent;
+
+    wavtime;  //cck commented out
+
+	updatevol;
+	0;;
+
+fun main=
+	MACecho netMac 0 1;
+	set master=0;
+	Secholn ":started";
+	confInit;
+	wifiInit 0;
+	loopcb	#loop; 
+	earInit;
+	infoInit;
+	netstart;
+	startdnsclient;
+	Secholn "!!!!!!!!!!!!!!!!!!!!!!!!!!!:done";
+	srand time_ms;
+	updatevol;
+	dumpscan wifiscans;
+	runinit;
+	0;;
+
+}

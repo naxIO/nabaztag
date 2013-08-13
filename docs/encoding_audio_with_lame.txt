@@ -1,0 +1,3 @@
+For encoding and compressing MP3 files so they play on the rabbit without cracking:
+
+lame -h -a -B 32 infile outfile

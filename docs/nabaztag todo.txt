@@ -1,0 +1,12 @@
+Functional todo
+===============
+Tweets - Twitter recently changed their API to force authentication so the call fails.
+Locator - Setup automatic creation of locator records based on IP.
+Nabaztaglives - Remove references to nabaztaglives.com.
+
+Source todo
+===========
+Tabs - Replace all tabs in source code with four spaces.  
+Dies - Replace all dies with logError.  Exception is redirects which should still die.
+mysql - Change all mysql calls to use newer mysqli extension.
+mysql - Replace remaining dynamic SQL calls with stored procs.

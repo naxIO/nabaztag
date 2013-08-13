@@ -1,0 +1,11 @@
+<html>
+Whoops, 404.  That can't be good.
+<!--#echo var="HTTP_HOST" -->
+<!--#echo var="HTTP_USER_AGENT" -->
+<!--#echo var="REQUEST_URI" -->
+<!--#echo var="REMOTE_ADDR" -->
+<!--#echo var="HTTP_REFERER" -->
+</html>
+<!-- 
+                                                                                                                                                                                                                                                                                                                                                                                                     
+--> 

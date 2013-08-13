@@ -1,0 +1,109 @@
+<html>
+<link rel="stylesheet" type="text/css" href="main.css" />
+<div id="faq">
+<h3>V1 Rabbit</h3>
+The V1 rabbit was released in 2005 so anything with a 2006 date in the source code is for the V2.  The V1 does not use the nominal.mtl files.  It uses .vasm files, which are psuedo 68hc11 assembly code which must be compiled into the byte code that is run by the rabbit.  You can download the compilation program source from <a href="http://www.sylvain-huet.com/rsc/nabaztag/Vasm.java">Sylvain's site</a>. 
+
+You can get the <a href="http://www.sylvain-huet.com/rsc/nabaztag/Nabaztag-vasm-RevB.pdf">machine code instructions</a> from him also.
+<P>
+The byte code has the following format which the compiler writes in big endian format:
+<P>
+<li>write 7F
+<li>write 05
+<li>write 3 bytes indicating the length of the entire byte code + 5 (should include "mind" and starts right after these 3 bytes)
+<li>write 5 bytes containing the word "amber"
+<li>write 4 bytes containing the index = 00000001
+<li>write 1 byte containing the priority =01
+<li>write 4 bytes indicating the length of the message
+<li>write the message compiled with vasm.java 
+<li>write 4 bytes indicating a music file = 01 if music 
+<li>write 4 bytes indicating the size of the music file
+<li>write the music file
+<li>write 1 byte checksum
+<li>write 4 bytes containing the word "mind"
+<li>write 1 byte containing FF
+<P>
+The rabbit executes the byte code and then 10 seconds later checks the server for a new byte code.  This cannot be changed as the original firmware source was never released by Violet.
+<P>
+For the V2 the byte code is completely different:
+<P>
+<li>write 7F
+<li>write 0A
+<li>write 3 bytes indicating the length of the byte code excluding the 1st 2 bytes and the last 2
+<li>write 1 byte space (0x20)
+<li>write the key e.g. ST for stream
+<li>write 1 byte space (0x20)
+<li>write the value e.g. hello.mp3
+<li>write FF
+<li>write 0A
+<P>
+Note each key/value can be separated by a newline character (\n) to combine multiple commands in one go.
+
+<P>
+<h3>Hosting</h3>
+<P>
+There are several issues with hosting a V1.  Unless you want to shell out $300 a month for a dedicated server, you will probably be hosting your rabbit using shared hosting.
+<P>
+The first problem with shared hosting is you can't install anything.  They give you what's called jailed shell, which means you only get access to your home directory.  You can't just go in there and start installing applications because that would effect every site on the server, not just yours.
+<P>
+The second problem is the V1 only executes what's in its byte code.  The sounds are contained within the byte code.  There is no way to stream music, or link to another location to download anything.  This means you get two options:
+<P>
+1. Compile everything in advance and store on the server
+<br>
+2. Have the server dynamically build the byte code and send back to the rabbit
+<P>
+Option one means having thousands of files for every possible sound.  Option two is probably not going to be an option on a shared host because you won't have the tools you need.
+<P>
+The third issue with hosting a V1 is that it only supports HTTP 1.0 which means it does not pass the host tag to the server like HTTP 1.1 does.  This presents a problem with shared hosting.
+<P>
+
+There are two types of shared hosting - shared IP hosting, and dedicated IP hosting.  In shared IP hosting, which is what most hosting farms offer by default, one machine hosts many websites and the HTTP 1.1 host name tag determines the ultimate destination.  All sites on the machine share the same SSL certificate.  
+<P>
+In dedicated IP hosting, there are many sites on the same machine but each site has a unique IP and each site has its own SSL certificate.  This is what we need to host a V1.  The easiest way to get this is to ask for a SSL certificate. 
+<P>
+<h3>Sound</h3>
+The V1 does not read mp3 or wav files.  Instead it uses obscure ADPCM formatted sound files which are of lesser quality than mp3.  Here is the format:
+<P>
+<li>Format: raw data
+<li>Sample Type: 16000 Hz, Mono
+<li>Bit depth: 8 bit
+<li>Encoding: OKI / Dialogic ADPCM (VOX)
+<li>Byte order: Big Endian
+<li>File extension: .vox
+<P>
+There are a few ways to convert mp3 to vox.  If you want to shell out $400, you can use Audacity Audition to convert them directly to vox.  However after converting, they seem to crackle, pop, and they are hard to hear.  Another option is to export them to PCM and then manually convert to vox.  Here are the settings:
+<P>
+<li>Sample Type: 16000 Hz, Mono
+<li>quality: 100%
+<li>Pre/Post filter: no
+<li>Bit depth: 8 bit
+<li>Dithering: no
+<li>Format: raw data
+<li>Encoding: 8 bit PCM unsigned
+<li>Byte order: Big Endian
+<li>File extension: .pcm
+<P>
+We can export an mp3 or wav to PCM using Quicktime:
+<P>
+<li>Export:sound to wave
+<li>Format: Linear PCM
+<li>Channels: Mono
+<li>Rate: 16.000 kHz
+<li>Quality: Normal
+<li>Sample Size: 8 bits
+<P>
+After exporting to PCM, you will need to run the vox converter to convert them to vox. Best way I've found so far - using <a href="http://freespace.virgin.net/joe.carter/codecs/">Joe Carter's vox coverter program</a>:
+<P>
+vox -b 8 infile.pcm infile.vox
+<P>
+<h3>Creating New Sounds</h3>
+<P>
+In order to send new sounds to the V1 and hear them, I typically go thru several steps:
+<P>
+<li>Use Logic to mix the track and bounce to mp3.  
+<li>Use Adobe Audition to trim the file and apply a vocal booster compressor.  
+<li>Use quicktime to export mp3 to a linear pcm, mono, 16kHz, 8 bit wave.  
+<li>Use Joe Carter's vox -b 8 to convert to vox file.  
+<li>Use java asm to compile into bin.  
+</div>
+</html>

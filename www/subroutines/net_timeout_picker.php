@@ -1,0 +1,16 @@
+<option value="5000" <?php if($wavTimeout==5000) echo 'selected'; ?>>5000</option>
+<option value="6000" <?php if($wavTimeout==6000) echo 'selected'; ?>>6000</option>
+<option value="7000" <?php if($wavTimeout==7000) echo 'selected'; ?>>7000</option>
+<option value="8000" <?php if($wavTimeout==8000) echo 'selected'; ?>>8000</option>
+<option value="9000" <?php if($wavTimeout==9000) echo 'selected'; ?>>9000</option>
+<option value="10000" <?php if($wavTimeout==10000) echo 'selected'; ?>>10000</option>
+<option value="11000" <?php if($wavTimeout==11000) echo 'selected'; ?>>11000</option>
+<option value="12000" <?php if($wavTimeout==12000) echo 'selected'; ?>>12000</option>
+<option value="13000" <?php if($wavTimeout==13000) echo 'selected'; ?>>13000</option>
+<option value="14000" <?php if($wavTimeout==14000) echo 'selected'; ?>>14000</option>
+<option value="15000" <?php if($wavTimeout==15000) echo 'selected'; ?>>15000</option>
+<option value="16000" <?php if($wavTimeout==16000) echo 'selected'; ?>>16000</option>
+<option value="17000" <?php if($wavTimeout==17000) echo 'selected'; ?>>17000</option>
+<option value="18000" <?php if($wavTimeout==18000) echo 'selected'; ?>>18000</option>
+<option value="19000" <?php if($wavTimeout==19000) echo 'selected'; ?>>19000</option>
+<option value="20000" <?php if($wavTimeout==20000) echo 'selected'; ?>>20000</option>

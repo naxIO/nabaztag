@@ -1,0 +1,88 @@
+<html>
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache">
+<META HTTP-EQUIV="CACHE-CONTROL" CONTENT="NO-CACHE">
+<META HTTP-EQUIV="EXPIRES" CONTENT="0">
+<link rel="stylesheet" type="text/css" href="main.css" />
+<b><center><h2>FAQ</center></h2></b>
+<P>
+<P>
+<div id="faq">
+<b>What does this site do?</b><br>
+This site is one of several independent sites that provides service for <a href="http://en.wikipedia.org/wiki/Nabaztag">Nabaztag</a> rabbits.<br>
+<P>
+<b>Why the service?</b><br>
+In July 2011, after several years of service, Violet, the company that made the Nabaztag, shut down 
+their servers. After a few days of missing my rabbit and figuring it
+was just another temporary lapse in service, I checked and discovered that they had closed and released their
+source code.  I downloaded the source code and wondered if I could put together my own solution.  
+<p>
+The rabbit's code was written in an obscure language called Metal which was created by one of the company's
+cofounders, Sylvain Huet.  There was very little documentation and 10,000+ files to sort thru but after a 
+few weeks of nights and weekends, I figured out how it worked.  I created this site for two reasons. 
+I did not want to run my rabbit from my Macbook, and second, I thought that there would be other people that
+would like to hear their rabbits again.
+<P>
+<b>Who runs it?</b><br>
+Me.  I run it.  My rabbit is named Pokey.  
+<P>
+<b>Are you related to Violet, the makers of Nabaztag?</b><br>
+No.
+<P>
+<b>Are you running OpenNab?</b><br>
+No.  I wanted to run the original source code as delivered by Violet and implement my own backend 
+solution for the most flexibility.  Also, OpenNab was not setup to be self hosting at that time.
+<P>
+<b>Is your service open source?</b><br>
+Yes and no.  The rabbit executes the original rabbit code released by Violet.  You can see that 
+<a href="nominal.010110.mtl">here</a>.  I have only made a few changes to this code.  The server side,
+the side you are seeing now, I wrote completely from scratch.  The database and application
+code that I designed and implemented from scratch is not open source.  However, most of it exists
+to support the user interface that you see.
+<P>
+<b>Will the V1.0 rabbits ever be supported?</b><br>
+Yes!  Bad Boy Bunny sent me a V1 and thanks to him V1s are now running in a very limited mode.  More features will be added in the future.  
+<P>
+<b>Are you going to add TTS so we can message other rabbits?</b><br>
+You can send speach to your rabbit from the update page.  Currently Google TTS is used for this and it is limited to 100 characters.
+<P>
+<b>What about streaming?  </b><br>
+Currently there is an issue with streaming anything over 80k in size or the sound breaks up when streamed.  
+I will try to do some
+more research on this.  What I really need to do is plug in to the diagnostic port on the rabbit but 
+I am reluctant to tear into my one and only rabbit.  This issue does not occur when using the
+emulator.
+<P>
+<b>Why doesn't my weather work? </b><br>
+To setup weather you need to lookup the Yahoo weather code as described in the <a href="weather_setup.htm">Setup
+Guide</a>.  This is not a postal code but a code provided by Yahoo.  For example, the weather code
+for London is 44418 and that is what you enter.  If this is wrong, you won't get weather.
+<P>
+Weather lights get their info from a successful weather forecast so you must have at least one weather
+forecast per day to get weather lights.
+<P>
+<b>What other features are you going to add in the future?</b><br>
+I add features as I dream them up.  Some of them came from you!  If you have any suggestions, please post to the 
+<a href="forumEntry.php">Forum</a>.
+<P>
+<b>Why does the clock play twice?</b><br>
+The clock you hear at the top of the hour consists of two messages.  The first is always the name of the hour
+e.g. noon, the second is a random message for the hour from the collection of time related messages.  
+<P>
+If you would prefer to only have the time announced, you can check the "single clock behavior" check box on the update rabbit page.
+<P>
+<b>Are you on Twitter?</b><br>
+Yes.  Follow nabaztaglives.
+<P>
+<b>Can we send money?</b><br>
+Yes, there is a donate link on the top page to help pay for hosting fees.
+<P>
+<b>Do you have any technical info regarding the V1 rabbit?</b><br>
+Yes, you can read about that <a href="faq_v1.htm">here</a>.
+<P>
+<b>Is there an API we can use to send commands to the rabbit?</b><br>
+Yes, there is a basic one which you can read about <a href="apiinfo.htm">here</a>.
+<P>
+<a href="index.php">Home</a>
+</div>
+
+</html>

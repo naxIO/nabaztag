@@ -70,9 +70,6 @@ $hour = date("H"); //military 00-23
 $min  = date("i"); //minute 00-59
 $sec  = date("s"); //secs 00-59
 
-$hutch = "./hutch";
-if(! is_dir($hutch)) mkdir($hutch);
-
 $hutch = "./hutch/$sn";
 if(! is_dir($hutch)) mkdir($hutch);
 

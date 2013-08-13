@@ -50,7 +50,7 @@ If you have a V1 rabbit, you'll need to set the override:
 Change the AllowOverride to <i>All</i> so it looks like this:
 <pre>
     &lt;Directory /var/www/&gt;
-            Options Indexes FollowSymLinks MultiViews
+            Options -Indexes FollowSymLinks MultiViews
             AllowOverride All
             Order allow,deny
             allow from all
@@ -74,9 +74,10 @@ In my case I only have one website on my Pi so I installed NabaztagLives to the 
 <pre>
     sudo cp -R www /var
 </pre>
-Next we need to change the ownership of the files we just copied:
+Next we need to set some ownership properties or our rabbit will be very quiet:
 <pre>
-    sudo chown -R pi:pi /var/www
+    sudo chown www-data:www-data /var/www/vl/hutch
+    sudo chown www-data:www-data /var/etc
 </pre>
 <P>
 Next open the db folder on your Pi and build the database. The password it prompts you for is your MySql root password:
@@ -164,6 +165,20 @@ Make it look like this:
 <h3>Shutdown</h3>
 <pre>
     sudo shutdown -h now
+</pre>
+
+<h3>Set automatic login</h3>
+<pre>
+    sudo vi /etc/inittab
+</pre>
+ 
+Find the following line:
+<pre>
+    1:2345:respawn:/sbin/getty 115200 tty1
+</pre>
+And change to:
+<pre>
+    1:2345:respawn:/bin/login -f pi tty1 </dev/tty1 >/dev/tty1 2>&1
 </pre>
 <h3>Open MySql</h3>
 <pre>

@@ -256,9 +256,6 @@ insert into `idleAction` (description,command,active)
 select 'Weather Lights & Twitchy Ears','WeatherTwitchy',1;
 
 insert into `idleAction` (description,command,active)
-select 'Test Loop (V1 only)','TestLoopV1',1;
-
-insert into `idleAction` (description,command,active)
 select 'Cheerlights (V1 only)','Cheerlights',1;
 
 update idleAction a

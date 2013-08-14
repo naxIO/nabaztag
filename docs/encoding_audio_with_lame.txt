@@ -1,3 +1,9 @@
 For encoding and compressing MP3 files so they play on the rabbit without cracking:
 
 lame -h -a -B 32 infile outfile
+
+Files need to be small, below 50k.  If still too large, you can try this:
+
+lame -h -a -B 16 infile outfile
+
+You can go lower but the sound quality suffers.

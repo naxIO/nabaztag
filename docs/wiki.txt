@@ -50,7 +50,7 @@ Change the AllowOverride to All so it looks like this:
     
 
     <Directory /var/www/>            
-        Options Indexes FollowSymLinks MultiViews            
+        Options -Indexes FollowSymLinks MultiViews            
         AllowOverride All            
         Order allow,deny            
         allow from all   
@@ -68,11 +68,11 @@ Then do:
 
 Installing the application
 --------------------------
-Easiest way to get setup, use git to get the latest code. First create a directory on your Pi to hold the project, change to it, and then do:
+The easiest way to get setup is to use git to get the latest code:
 
     git clone git://git.code.sf.net/p/nabaztaglives/code NabaztagLives
 
-This will create a folder named NabaztagLives on your Pi. Open it.
+This will create a folder named NabaztagLives on your Pi. 
 
 In my case I only have one website on my Pi so I installed NabaztagLives to the root website. If you don't want to do this, now is the time to create a folder inside /var/www. Otherwise copy the contents of the www directory to the root of your Pi's web server which is /var/www:
 
@@ -104,9 +104,13 @@ Almost done! Get your IP address:
 
     ifconfig | grep addr
 
-You should get an IP that starts with 192. Copy that and open a browser. If you are on your Pi type in localhost for the address. If you are remotely connect, type in the IP you wrote down. The site should be displayed. If you didn't get an IP that means your wifi is hosed and I don't know how you got this far.
+You should get an IP that starts with 192. Open a browser and browse to that address. If you are on your Pi you can also type in localhost for the address.  The site should be displayed. If you didn't get an IP that means your wifi is hosed and I don't know how you got this far.
 
 You're finished! All you need to do now is setup your rabbit. If you need help with that, click on the Setup Info button on the NabaztagLives website that's now running on your Pi. When you're done, be sure and click the "Update Rabbit" button to see all the features.
+
+I get a warning about a Locator Record
+--------------------------------------
+If you see this on the home page then you need to change the IP addresses in /www/locate.jsp to your server's IP address (the one displayed at the bottom of the page).
 
 My rabbit doesn't work
 ----------------------

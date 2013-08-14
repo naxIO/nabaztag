@@ -42,7 +42,6 @@ include '../../subroutines/writeToFile.php';
 include '../../subroutines/getRSSFeed.php';
 include '../../subroutines/queryWithRetry.php';
 include '../../subroutines/getFollow.php';
-include '../../subroutines/logError.php';
 include '../../../etc/nabaztag_db.php';
     
 $msg_idle = '7fffffff';

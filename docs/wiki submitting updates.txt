@@ -1,0 +1,48 @@
+Submitting updates
+------------------
+First please set your tab key to emit four spaces.  I'm trying to keep tabs out of the source code.
+
+Make sure you pull the latest code:
+
+    git pull
+
+If you are adding new functionality, please update the issues.htm found in the www folder so we know what you did.  
+
+If you're working on a Mac, please delete all of the pesky Finder files that get created when you open a folder in Finder:
+
+    find . -name ".DS_Store" -delete 
+
+To check what you've changed you can do:
+
+    git status
+
+If you haven't done so already, please configure your info:
+
+    git config --global user.name "Name"
+    git config --global user.email "your_email@youremail.com"
+
+Next create a branch to do your work:
+
+    git checkout -b mywork
+
+And commit when finished:
+
+    git add file1 file2 file3
+    git commit
+
+Add a commit message:
+
+    git commit -m 'My commit message'
+
+Before creating a patch, rebase your changes with the master:
+
+    git checkout master
+    git pull
+    git checkout mywork
+    git rebase master
+
+Finally, create the patch:
+
+    git format-patch -M master
+
+You can then submit the patch on a ticket.

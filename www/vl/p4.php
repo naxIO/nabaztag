@@ -73,7 +73,6 @@ $sec  = date("s"); //secs 00-59
 $hutch = "./hutch/$sn";
 if(! is_dir($hutch)) mkdir($hutch);
 
-include '../subroutines/logError.php';
 include '../../etc/nabaztag_db.php';
 
 ini_set('log_errors', 0);  //localhost error
@@ -1708,5 +1707,17 @@ function out2($out,$rabbitID,$con)
     if($msg != 'OK') logError($msg);
 }
     
+/***********************************************************
+ * log error
+ ***********************************************************/
+function logError($msg)
+{
+    $date = date("Y-m-d H:i:s");
+    $msg = "[$date] $msg \n";
+    $file='../../etc/nabaztag_error.log';
+    error_log($msg,3,$file);
+}
+
+
     
 ?>

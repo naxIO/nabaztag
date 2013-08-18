@@ -1032,22 +1032,33 @@ function doCurrentWeather($weatherCode,$sn,$degrees,$rabbitID,$broad,$lang,$min,
     //check for folder in hutch
     
     $hutch = "./hutch/$sn";
-    
     $file="$hutch/weather.mp3";
     
     if(file_exists($file)) unlink($file);
 
+    /*
     $fh = fopen($file, 'w') or die("can't open file");
     
     for($i=0; $i < count($fca); $i++)
          fwrite($fh,file_get_contents($fca[$i]));
 
     fclose($fh);
+    */
     
+    $infiles = '';
+        
+    for($i=0; $i < count($fca); $i++)
+        $infiles .= $fca[$i] . ' ';
+        
+    $final = "$hutch/weather_MP3WRAP.mp3";
+    if(file_exists($final)) unlink($final);
+    
+    $ans = shell_exec("mp3wrap $file $infiles");
+   
     if($queue == true)
-        out("PLAY $hutch/weather.mp3",$rabbitID,$min,$con);
+        out("PLAY $final",$rabbitID,$min,$con);
     else 
-        echo "PLAY $hutch/weather.mp3";
+        echo "PLAY $final";
   
 }
 
@@ -1187,6 +1198,7 @@ function doWeather($weatherCode,$sn,$degrees,$rabbitID,$broad,$lang,$min,$hour,$
     
     if(file_exists($file)) unlink($file);
 
+    /*
     $fh = fopen($file, 'w') or die("can't open file");
     
     for($i=0; $i < count($fca); $i++)
@@ -1195,12 +1207,23 @@ function doWeather($weatherCode,$sn,$degrees,$rabbitID,$broad,$lang,$min,$hour,$
     }
 
     fclose($fh);
+    */
     
+    $infiles = '';
+        
+    for($i=0; $i < count($fca); $i++)
+        $infiles .= $fca[$i] . ' ';
+        
+    $final = "$hutch/weather_MP3WRAP.mp3";
+    if(file_exists($final)) unlink($final);
+    
+    $ans = shell_exec("mp3wrap $file $infiles");
+      
     if($queue == true)
-        out("PLAY $hutch/weather.mp3",$rabbitID,$min,$con);
+        out("PLAY $final",$rabbitID,$min,$con);
     else 
     {
-        echo "PLAY $hutch/weather.mp3";
+        echo "PLAY $final";
     }    
 
     //write weather led file

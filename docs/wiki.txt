@@ -78,11 +78,6 @@ In my case I only have one website on my Pi so I installed NabaztagLives to the 
 
     sudo cp -R www /var
 
-Next we need to set some ownership properties or our rabbit will be very quiet:
- 
-    sudo chown www-data:www-data /var/www/vl/hutch
-    sudo chown www-data:www-data /var/etc
-    
 Next open the db folder on your Pi and build the database. Enter your MySql root password when prompted:
 
     sudo ./db_setup.sh
@@ -92,6 +87,11 @@ Next we need to move the db info file to the right place.  This is also where th
 
 
     sudo cp -R ./etc /var
+
+Next we need to set some ownership properties or our rabbit will be very quiet:
+ 
+    sudo chown www-data:www-data /var/www/vl/hutch
+    sudo chown www-data:www-data /var/etc
 
 Now we need to remove the default "It Works!" index page from apache:
 
@@ -189,6 +189,10 @@ And change to:
 
     1:2345:respawn:/bin/login -f pi tty1 </dev/tty1 >/dev/tty1 2>&1
     
+Get current temperature
+-----------------------
+    vcgencmd measure_temp
+
 Open MySql
 ----------
     mysql rabbit -u root -p

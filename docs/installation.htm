@@ -70,7 +70,7 @@ The easiest way to get setup is to use git to get the latest code.  First create
 <P>
 This will create a folder named NabaztagLives on your Pi.  
 <P>
-In my case I only have one website on my Pi so I installed NabaztagLives to the root website.  If you don't want to do this, now is the time to create a folder inside /var/www.  Otherwise copy the contents of the www directory to the root of your Pi's web server which is /var/www:
+The solution is designed to run from a dedicated Pi and is installed to the root folder of the website.  If you install it to another location, the relative paths will be broken and it will not work.  Copy the contents of the www directory to the root of your Pi's web server which is /var/www:
 <pre>
     sudo cp -R www /var
 </pre>

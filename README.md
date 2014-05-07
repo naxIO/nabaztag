@@ -104,9 +104,9 @@ You should get an IP that starts with 192. Open a browser and browse to that add
 You're finished! All you need to do now is setup your rabbit. If you need help with that, click on the Setup Info button on the NabaztagLives website that's now running on your Pi. When you're done, be sure and click the "Update Rabbit" button to see all the features.
 I get a warning about a Locator Record
 If you see this on the home page then you need to change the IP addresses in /www/locate.jsp to your server's IP address (the one displayed at the bottom of the page).
-My rabbit doesn't work
+#### My rabbit doesn't work
 That's what I said! Check the error log, there's a button for it on the site. Click "reset" to reset it. Make sure you have setup your rabbit to do things! Set the idle behavior to PacMan Lights so you don't have to wait to see if it works. You can always post to the forum at https://sourceforge.net/p/nabaztaglives/discussion/brokenrabbit/.
-New to Raspberry?
+#### New to Raspberry?
 If you are setting up your Raspberry Pi for the first time, you can get instructions from http://www.raspberrypi.org/wp-content/uploads/2012/04/quick-start-guide-v2_1.pdf.
 I used the NOOBS image and deleted all but the "Wheezy" files before copying it to the SD card. That saves room and speeds the installation assuming you don't intend to run the other distros.
 I recommend a 4 GB class 10 SD card from a name brand like Sandisk. The Model B has a 25 MB/s max write speed so you want something that can write that fast. Always check to see if your equipment is supported by checking to see if it works first by going to http://elinux.org/RPi_VerifiedPeripherals.

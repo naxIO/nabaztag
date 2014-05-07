@@ -20,6 +20,8 @@ LAME 32bits version 3.99.5 (http://lame.sf.net)
 Mp3Wrap Version 0.5 (2003/Jan/16)
 
 You can install them on your Raspberry Pi by running the commands below. When you install MySql, it will prompt you for a root password. You'll need that to setup the database.
+
+```
 sudo apt-get update
 sudo apt-get upgrade
 
@@ -30,6 +32,8 @@ sudo apt-get install mysql-server mysql-client php5-mysql
 sudo apt-get install lame
 
 sudo apt-get install mp3wrap
+
+```
 When you install Apache, it may kick out an error that says Could not reliably determine the server's fully qualified domain name. You can fix this by setting the server's name to localhost:
 sudo vi /etc/apache2/apache2.conf
 Scroll to the end of the file and insert:

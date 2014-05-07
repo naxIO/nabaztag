@@ -3,14 +3,13 @@ nabaztag
 
 NabaztagLives Code to run your nabaztag on your own Raspberry or self hosted server
 
+NabaztagLives has been tested on the Raspberry Pi "Wheezy" distribution and has the following dependencies:
 
-NabaztagLives has been tested on the Raspberry Pi "Wheezy" (NOOBS) distribution and has the following dependencies:
-
-Apache
-PHP
-MySQL
-Lame
-Mp3Wrap
+* Apache
+* PHP
+* MySQL
+* Lame
+* Mp3Wrap
 
 At the time of this writing I am running with the following versions:
 Apache/2.2.22 (Debian)

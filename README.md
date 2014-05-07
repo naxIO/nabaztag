@@ -152,8 +152,11 @@ Find the following line:
 1:2345:respawn:/sbin/getty 115200 tty1
 And change to:
 1:2345:respawn:/bin/login -f pi tty1 </dev/tty1 >/dev/tty1 2>&1
-Get current temperature
+
+#### Get current temperature
+```
 vcgencmd measure_temp
+```
 
 #### Open MySql
 ```

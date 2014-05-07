@@ -155,8 +155,7 @@ And change to:
 Get current temperature
 vcgencmd measure_temp
 
-Open MySql
-
+#### Open MySql
 ```
 mysql rabbit -u root -p
 ```

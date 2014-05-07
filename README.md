@@ -12,11 +12,11 @@ NabaztagLives has been tested on the Raspberry Pi "Wheezy" distribution and has 
 * Mp3Wrap
 
 At the time of this writing I am running with the following versions:
-Apache/2.2.22 (Debian)
-PHP 5.4.4-14+deb7u3 (cli) (built: Jul 18 2013 01:01:56)
-mysql Ver 14.14 Distrib 5.5.31, for debian-linux-gnu (armv7l)
-LAME 32bits version 3.99.5 (http://lame.sf.net)
-Mp3Wrap Version 0.5 (2003/Jan/16)
+* Apache/2.2.22 (Debian)
+* PHP 5.4.4-14+deb7u3 (cli) (built: Jul 18 2013 01:01:56)
+* mysql Ver 14.14 Distrib 5.5.31, for debian-linux-gnu (armv7l)
+* LAME 32bits version 3.99.5 (http://lame.sf.net)
+* Mp3Wrap Version 0.5 (2003/Jan/16)
 
 You can install them on your Raspberry Pi by running the commands below. When you install MySql, it will prompt you for a root password. You'll need that to setup the database.
 

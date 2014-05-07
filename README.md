@@ -23,6 +23,7 @@ You can install them on your Raspberry Pi by running the commands below. When yo
 
 ```
 sudo apt-get update
+
 sudo apt-get upgrade
 
 sudo apt-get install apache2 php5 php5-curl libapache2-mod-php5
@@ -41,33 +42,65 @@ ServerName localhost
 If you have a V1 rabbit, you'll need to set the override:
 sudo vi /etc/apache2/sites-enabled/000-default
 Change the AllowOverride to All so it looks like this:
+
+```
 <Directory /var/www/>            
     Options -Indexes FollowSymLinks MultiViews            
     AllowOverride All            
     Order allow,deny            
     allow from all   
 </Directory>
+```
+
 Save the file and exit.
 Then do:
+
+```
 sudo apachectl restart
+```
+
 
 Installing the application
 The easiest way to get setup is to use git to get the latest code:
 git clone git://git.code.sf.net/p/nabaztaglives/code NabaztagLives
 This will create a folder named NabaztagLives on your Pi.
 The solution is designed to run from a dedicated Pi and is installed to the root folder of the website. If you install it to another location, the relative paths will be broken and it will not work. Copy the contents of the www directory to the root of your Pi's web server which is /var/www:
+
+```
 sudo cp -R www /var
+```
+
 Next open the db folder on your Pi and build the database. Enter your MySql root password when prompted:
+
+```
 sudo ./db_setup.sh
+```
+
 Next we need to move the db info file to the right place. This is also where the logging occurs. Go back up one folder to the root folder where you placed the code (where etc exists) and execute the following:
+
+```
 sudo cp -R ./etc /var
+```
+
 Next we need to set some ownership properties or our rabbit will be very quiet:
+
+```
 sudo chown www-data:www-data /var/www/vl/hutch
 sudo chown www-data:www-data /var/etc
+```
+
 Now we need to remove the default "It Works!" index page from apache:
+
+```
 sudo rm /var/www/index.html
+```
+
 Almost done! Get your IP address:
+
+```
 ifconfig | grep addr
+```
+
 You should get an IP that starts with 192. Open a browser and browse to that address. If you are on your Pi you can also type in localhost for the address. The site should be displayed. If you didn't get an IP that means your wifi is hosed and I don't know how you got this far.
 You're finished! All you need to do now is setup your rabbit. If you need help with that, click on the Setup Info button on the NabaztagLives website that's now running on your Pi. When you're done, be sure and click the "Update Rabbit" button to see all the features.
 I get a warning about a Locator Record

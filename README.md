@@ -154,5 +154,9 @@ And change to:
 1:2345:respawn:/bin/login -f pi tty1 </dev/tty1 >/dev/tty1 2>&1
 Get current temperature
 vcgencmd measure_temp
+
 Open MySql
+
+```
 mysql rabbit -u root -p
+```
